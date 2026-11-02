@@ -404,7 +404,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-## Kestrel fork (`0.19.1-kestrel.1`)
+## Kestrel fork (`0.19.1-kestrel.2`)
 
 This fork of [mike-nott/mcp-assist](https://github.com/mike-nott/mcp-assist) at tag `v0.19.1` adds
 long-term memory backed by a self-hosted [Mem0](https://github.com/mem0ai/mem0) server (REST API,
@@ -413,6 +413,8 @@ long-term memory backed by a self-hosted [Mem0](https://github.com/mem0ai/mem0) 
 - `custom_tools/mem0_memory.py` (new): tools `recall_memory(query)` and `save_memory(fact)`, plus a
   background save of each finished turn (`POST /memories`, user + assistant message). Saves are
   fire-and-forget tasks; failures only log a warning, so a Mem0 outage never breaks replies.
+  The turn save is skipped for any turn in which `save_memory` ran or was attempted (per-turn
+  ContextVar flag set in `_execute_single_tool_call`), so a remembered fact is stored once.
 - `custom_tools/__init__.py`: one loader branch for the Mem0 tool. The tools are listed only while
   a profile has Mem0 enabled.
 - `mcp_server.py`: the custom-tools loader is always created (upstream creates it only when a web

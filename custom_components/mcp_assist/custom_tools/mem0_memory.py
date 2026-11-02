@@ -11,6 +11,7 @@ Settings are per profile (options ``mem0_enabled``, ``mem0_url``, ``mem0_api_key
 from __future__ import annotations
 
 import logging
+from contextvars import ContextVar
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -38,6 +39,23 @@ TOOL_TIMEOUT = aiohttp.ClientTimeout(total=6, connect=2)
 # several seconds, but it is off the reply path.
 SAVE_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=2)
 RECALL_TOP_K = 5
+
+# Per-turn state. Each conversation turn runs in its own asyncio task, so a ContextVar holding a
+# fresh dict per turn keeps concurrent conversations apart; tool-call subtasks (asyncio.gather)
+# inherit the same dict and can mark it.
+_TURN: ContextVar[Optional[Dict[str, bool]]] = ContextVar("mcp_assist_mem0_turn", default=None)
+
+
+def begin_turn() -> None:
+    """Start a new turn (call at the start of each conversation turn)."""
+    _TURN.set({"save_memory": False})
+
+
+def note_tool_call(tool_name: Optional[str]) -> None:
+    """Record that save_memory ran (or was attempted) in this turn."""
+    turn = _TURN.get()
+    if turn is not None and tool_name == "save_memory":
+        turn["save_memory"] = True
 
 
 def options_schema(options: Dict[str, Any]) -> Dict[Any, Any]:
@@ -120,6 +138,11 @@ def schedule_turn_save(hass, entry, user_text: str, reply_text: str) -> None:
     try:
         settings = get_settings(hass, entry)
         if not settings or not user_text or not reply_text:
+            return
+        turn = _TURN.get()
+        if turn is not None and turn.get("save_memory"):
+            # save_memory already stored this turn's fact; a turn save would duplicate it
+            _LOGGER.debug("Mem0 turn save skipped: save_memory ran this turn")
             return
         hass.async_create_background_task(
             _save_turn(hass, settings, user_text, reply_text),
