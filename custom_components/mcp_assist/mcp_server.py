@@ -221,21 +221,28 @@ class MCPServer:
             self.site = web.TCPSite(self.runner, "0.0.0.0", self.port)
             await self.site.start()
 
-            # Create and initialize custom tools if search provider is enabled
-            # Done here (not in __init__) so system entry exists for reading settings
+            # Done here (not in __init__) so the system entry exists for settings.
+            # Always construct the loader: Mem0 does not depend on web search, and
+            # its tool list is read from current options on each tools/list call.
             search_provider = self._get_search_provider()
-            if search_provider in ["brave", "duckduckgo", "searxng"]:
-                try:
-                    from .custom_tools import CustomToolsLoader
+            try:
+                from .custom_tools import CustomToolsLoader
+                from .custom_tools.mem0_memory import any_profile_enabled
 
-                    self.custom_tools = CustomToolsLoader(self.hass, self.entry)
-                    await self.custom_tools.initialize()
+                self.custom_tools = CustomToolsLoader(self.hass, self.entry)
+                await self.custom_tools.initialize()
+                memory_enabled = any_profile_enabled(self.hass)
+                if (
+                    search_provider in ["brave", "duckduckgo", "searxng"]
+                    or memory_enabled
+                ):
                     _LOGGER.info(
-                        "✅ Custom tools initialized for search provider: %s",
+                        "✅ Custom tools initialized (search provider: %s, Mem0: %s)",
                         search_provider,
+                        "enabled" if memory_enabled else "disabled",
                     )
-                except Exception as e:
-                    _LOGGER.error(f"Failed to initialize custom tools: {e}")
+            except Exception as e:
+                _LOGGER.error(f"Failed to initialize custom tools: {e}")
 
             _LOGGER.info(
                 "✅ MCP server started successfully on http://0.0.0.0:%d", self.port

@@ -120,6 +120,11 @@
           "timeout": "Tiempo de espera de respuesta",
           "thinking_mode": "Razonamiento",
           "debug_mode": "Modo de depuracion",
+          "mem0_enabled": "Memoria a largo plazo Mem0",
+          "mem0_url": "URL del servidor Mem0",
+          "mem0_api_key": "Clave API de Mem0",
+          "mem0_user_id": "ID de usuario de Mem0",
+          "mem0_auto_save": "Guardar turnos en Mem0",
           "ollama_keep_alive": "Mantener Ollama activo",
           "ollama_num_ctx": "Ventana de contexto de Ollama",
           "clean_responses": "Limpiar respuestas para salida de voz",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "El agente de OpenClaw que responde a las solicitudes de este perfil. Debe coincidir con un agente configurado en OpenClaw. El valor predeterminado es 'main'.",
           "openclaw_session_mode": "'Per conversation' da a cada conversación de Home Assistant su propia sesión de OpenClaw, y las preguntas de seguimiento se quedan en ella. 'Fixed' envía todas las solicitudes a la única sesión indicada en Clave de sesión.",
           "api_key": "Obligatoria para proveedores en la nube. Opcional para servidores locales (LM Studio, llama.cpp, Ollama, vLLM): déjala vacía salvo que el servidor requiera una clave.",
-          "thinking_mode": "Controla el razonamiento de los modelos que piensan antes de responder. Desactivado es lo más rápido para voz. Predeterminado del servidor no envía nada. No todos los servidores lo respetan (poco fiable en LM Studio)."
+          "thinking_mode": "Controla el razonamiento de los modelos que piensan antes de responder. Desactivado es lo más rápido para voz. Predeterminado del servidor no envía nada. No todos los servidores lo respetan (poco fiable en LM Studio).",
+          "mem0_enabled": "Desactivado de forma predeterminada. Al activarlo, este perfil puede buscar y guardar recuerdos a largo plazo en un servidor Mem0 autohospedado. No se envía nada mientras está desactivado.",
+          "mem0_url": "URL base del servidor REST de Mem0. El valor predeterminado es http://127.0.0.1:8888.",
+          "mem0_api_key": "Se envía en la cabecera X-API-Key. Déjelo en blanco si el servidor no requiere una clave.",
+          "mem0_user_id": "ID de usuario de Mem0 que separa los recuerdos de este perfil. El valor predeterminado es homeassistant.",
+          "mem0_auto_save": "Desactivado de forma predeterminada. Al activarlo, cada turno terminado se envía a Mem0 en segundo plano. Se omite si save_memory ya se ejecutó en ese turno. Si Mem0 no está accesible, la conversación se completa igualmente."
         }
       },
       "mcp_server": {

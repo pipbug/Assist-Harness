@@ -120,6 +120,11 @@
           "timeout": "Casovy limit odpovedi",
           "thinking_mode": "Přemýšlení",
           "debug_mode": "Rezim ladeni",
+          "mem0_enabled": "Dlouhodobá paměť Mem0",
+          "mem0_url": "URL serveru Mem0",
+          "mem0_api_key": "API klíč Mem0",
+          "mem0_user_id": "ID uživatele Mem0",
+          "mem0_auto_save": "Ukládat tahy do Mem0",
           "ollama_keep_alive": "Udrzovat Ollama aktivni",
           "ollama_num_ctx": "Kontextove okno Ollama",
           "clean_responses": "Čisté odpovědi pro hlasový výstup",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "Agent OpenClaw, který odpovídá na požadavky tohoto profilu. Musí odpovídat agentovi nastavenému v OpenClaw. Výchozí je 'main'.",
           "openclaw_session_mode": "'Per conversation' dává každé konverzaci v Home Assistant vlastní relaci OpenClaw a navazující otázky v ní zůstávají. 'Fixed' posílá všechny požadavky do jediné relace nastavené v poli Klíč relace.",
           "api_key": "Povinný pro cloudové poskytovatele. Pro místní servery (LM Studio, llama.cpp, Ollama, vLLM) volitelný: ponechte prázdné, pokud server klíč nevyžaduje.",
-          "thinking_mode": "Řídí uvažování modelů, které před odpovědí přemýšlejí. Vypnuto je pro hlas nejrychlejší. Výchozí nastavení serveru nic neodesílá. Ne každý server to respektuje (v LM Studio nespolehlivé)."
+          "thinking_mode": "Řídí uvažování modelů, které před odpovědí přemýšlejí. Vypnuto je pro hlas nejrychlejší. Výchozí nastavení serveru nic neodesílá. Ne každý server to respektuje (v LM Studio nespolehlivé).",
+          "mem0_enabled": "Ve výchozím stavu vypnuto. Po zapnutí může tento profil vyhledávat a ukládat dlouhodobé vzpomínky na vlastním serveru Mem0. Dokud je vypnuto, nic se neodesílá.",
+          "mem0_url": "Základní URL REST serveru Mem0. Výchozí je http://127.0.0.1:8888.",
+          "mem0_api_key": "Odesílá se v hlavičce X-API-Key. Nechte prázdné, pokud server klíč nevyžaduje.",
+          "mem0_user_id": "ID uživatele Mem0, které odděluje vzpomínky tohoto profilu. Výchozí je homeassistant.",
+          "mem0_auto_save": "Ve výchozím stavu vypnuto. Po zapnutí se každý dokončený tah odešle na Mem0 na pozadí. Přeskočí se, pokud v tomto tahu už běželo save_memory. Když Mem0 není dostupné, konverzace se přesto dokončí."
         }
       },
       "mcp_server": {

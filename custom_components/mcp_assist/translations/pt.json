@@ -120,6 +120,11 @@
           "timeout": "Tempo limite de resposta",
           "thinking_mode": "Raciocínio",
           "debug_mode": "Modo de depuracao",
+          "mem0_enabled": "Memória de longo prazo Mem0",
+          "mem0_url": "URL do servidor Mem0",
+          "mem0_api_key": "Chave de API Mem0",
+          "mem0_user_id": "ID de usuário Mem0",
+          "mem0_auto_save": "Guardar turnos no Mem0",
           "ollama_keep_alive": "Manter Ollama ativo",
           "ollama_num_ctx": "Janela de contexto Ollama",
           "clean_responses": "Limpar respostas para saída de voz",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "O agente OpenClaw que responde às solicitações deste perfil. Deve corresponder a um agente configurado no OpenClaw. O padrão é 'main'.",
           "openclaw_session_mode": "'Per conversation' dá a cada conversa do Home Assistant a sua própria sessão do OpenClaw, e as perguntas de acompanhamento ficam nela. 'Fixed' envia todas as solicitações para a única sessão definida em Chave de sessão.",
           "api_key": "Obrigatória para fornecedores na nuvem. Opcional para servidores locais (LM Studio, llama.cpp, Ollama, vLLM): deixe em branco, a menos que o servidor exija uma chave.",
-          "thinking_mode": "Controla o raciocínio dos modelos que pensam antes de responder. Desligado é o mais rápido para voz. Predefinição do servidor não envia nada. Nem todos os servidores o respeitam (pouco fiável no LM Studio)."
+          "thinking_mode": "Controla o raciocínio dos modelos que pensam antes de responder. Desligado é o mais rápido para voz. Predefinição do servidor não envia nada. Nem todos os servidores o respeitam (pouco fiável no LM Studio).",
+          "mem0_enabled": "Desligado por predefinição. Quando ligado, este perfil pode pesquisar e guardar memórias de longo prazo num servidor Mem0 autoalojado. Nada é enviado enquanto estiver desligado.",
+          "mem0_url": "URL base do servidor REST Mem0. A predefinição é http://127.0.0.1:8888.",
+          "mem0_api_key": "Enviada no cabeçalho X-API-Key. Deixe em branco se o servidor não exigir uma chave.",
+          "mem0_user_id": "ID de usuário Mem0 que separa as memórias deste perfil. A predefinição é homeassistant.",
+          "mem0_auto_save": "Desligado por predefinição. Quando ligado, cada turno concluído é enviado ao Mem0 em segundo plano. É ignorado se save_memory já tiver corrido nesse turno. Se o Mem0 estiver inacessível, a conversa conclui-se na mesma."
         }
       },
       "mcp_server": {

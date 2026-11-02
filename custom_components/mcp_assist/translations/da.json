@@ -120,6 +120,11 @@
           "timeout": "Timeout for svar",
           "thinking_mode": "Tænkning",
           "debug_mode": "Fejlsoegningstilstand",
+          "mem0_enabled": "Mem0 langtidshukommelse",
+          "mem0_url": "Mem0-server-URL",
+          "mem0_api_key": "Mem0 API-nøgle",
+          "mem0_user_id": "Mem0-bruger-ID",
+          "mem0_auto_save": "Gem ture i Mem0",
           "ollama_keep_alive": "Hold Ollama aktiv",
           "ollama_num_ctx": "Ollama kontekstvindue",
           "clean_responses": "Rens svar til stemmeoutput",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "Den OpenClaw-agent, der besvarer denne profils forespørgsler. Den skal svare til en agent, der er sat op i OpenClaw. Standard er 'main'.",
           "openclaw_session_mode": "'Per conversation' giver hver samtale i Home Assistant sin egen OpenClaw-session, så opfølgende spørgsmål bliver i den. 'Fixed' sender alle forespørgsler til den ene session, der er angivet i Sessionsnøgle.",
           "api_key": "Påkrævet for cloududbydere. Valgfri for lokale servere (LM Studio, llama.cpp, Ollama, vLLM): lad feltet være tomt, medmindre serveren kræver en nøgle.",
-          "thinking_mode": "Styrer ræsonneringen hos modeller, der tænker, før de svarer. Fra er hurtigst til tale. Serverstandard sender intet. Ikke alle servere overholder indstillingen (upålidelig i LM Studio)."
+          "thinking_mode": "Styrer ræsonneringen hos modeller, der tænker, før de svarer. Fra er hurtigst til tale. Serverstandard sender intet. Ikke alle servere overholder indstillingen (upålidelig i LM Studio).",
+          "mem0_enabled": "Fra som standard. Når den er til, kan denne profil søge og gemme langtidshukommelser på en selvhostet Mem0-server. Der sendes intet, mens den er fra.",
+          "mem0_url": "Basis-URL til Mem0 REST-serveren. Standard er http://127.0.0.1:8888.",
+          "mem0_api_key": "Sendes som X-API-Key-headeren. Lad feltet være tomt, hvis serveren ikke kræver en nøgle.",
+          "mem0_user_id": "Mem0-bruger-id, der afgrænser denne profils hukommelser. Standard er homeassistant.",
+          "mem0_auto_save": "Fra som standard. Når den er til, sendes hver afsluttet tur til Mem0 i baggrunden. Springes over, hvis save_memory allerede kørte i den tur. Hvis Mem0 ikke kan nås, fuldføres samtalen alligevel."
         }
       },
       "mcp_server": {

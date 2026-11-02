@@ -120,6 +120,11 @@
           "timeout": "응답 시간 초과",
           "thinking_mode": "사고",
           "debug_mode": "디버그 모드",
+          "mem0_enabled": "Mem0 장기 기억",
+          "mem0_url": "Mem0 서버 URL",
+          "mem0_api_key": "Mem0 API 키",
+          "mem0_user_id": "Mem0 사용자 ID",
+          "mem0_auto_save": "턴을 Mem0에 저장",
           "ollama_keep_alive": "Ollama 활성 유지",
           "ollama_num_ctx": "Ollama 컨텍스트 창",
           "clean_responses": "음성 출력용 응답 정리",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "이 프로필의 요청에 응답하는 OpenClaw 에이전트입니다. OpenClaw에 설정된 에이전트와 일치해야 합니다. 기본값은 'main'입니다.",
           "openclaw_session_mode": "'Per conversation'은 Home Assistant 대화마다 별도의 OpenClaw 세션을 주며, 후속 질문은 그 세션에 남습니다. 'Fixed'는 모든 요청을 세션 키에 지정한 하나의 세션으로 보냅니다.",
           "api_key": "클라우드 제공업체에는 필수입니다. 로컬 서버(LM Studio, llama.cpp, Ollama, vLLM)에서는 선택 사항이며, 서버가 키를 요구하지 않으면 비워 두세요.",
-          "thinking_mode": "답변 전에 생각하는 모델의 추론을 제어합니다. 끄기가 음성에 가장 빠릅니다. 서버 기본값은 아무것도 보내지 않습니다. 모든 서버가 따르지는 않습니다(LM Studio에서는 불안정)."
+          "thinking_mode": "답변 전에 생각하는 모델의 추론을 제어합니다. 끄기가 음성에 가장 빠릅니다. 서버 기본값은 아무것도 보내지 않습니다. 모든 서버가 따르지는 않습니다(LM Studio에서는 불안정).",
+          "mem0_enabled": "기본값은 꺼짐입니다. 켜면 이 프로필이 자체 호스팅 Mem0 서버에서 장기 기억을 검색하고 저장할 수 있습니다. 꺼져 있는 동안에는 아무것도 전송되지 않습니다.",
+          "mem0_url": "Mem0 REST 서버의 기본 URL입니다. 기본값은 http://127.0.0.1:8888 입니다.",
+          "mem0_api_key": "X-API-Key 헤더로 전송됩니다. 서버가 키를 요구하지 않으면 비워 두세요.",
+          "mem0_user_id": "이 프로필의 기억을 구분하는 Mem0 사용자 ID입니다. 기본값은 homeassistant 입니다.",
+          "mem0_auto_save": "기본값은 꺼짐입니다. 켜면 끝난 각 턴이 백그라운드에서 Mem0로 전송됩니다. 그 턴에서 save_memory가 이미 실행되었으면 건너뜁니다. Mem0에 연결할 수 없어도 대화는 완료됩니다."
         }
       },
       "mcp_server": {

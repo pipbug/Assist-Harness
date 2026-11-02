@@ -130,6 +130,11 @@
           "timeout": "Response Time Out",
           "thinking_mode": "Thinking",
           "debug_mode": "Debug Mode",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "mem0_auto_save": "Save turns to Mem0",
           "ollama_keep_alive": "Ollama Keep Alive",
           "ollama_num_ctx": "Ollama Context Window",
           "clean_responses": "Clean Responses for Voice Output",
@@ -149,7 +154,12 @@
           "openclaw_agent_id": "The OpenClaw agent that answers this profile's requests. It must match an agent configured in OpenClaw. Default is 'main'.",
           "openclaw_session_mode": "'Per conversation' gives each Home Assistant conversation its own OpenClaw session, so follow-up questions stay in it. 'Fixed' sends every request to the single session set in Session Key.",
           "api_key": "Required for cloud providers. Optional for local servers (LM Studio, llama.cpp, Ollama, vLLM): leave blank unless the server needs a key.",
-          "thinking_mode": "Controls reasoning on models that think before answering. Off is fastest for voice. Server default sends nothing. Not every server honours it (LM Studio is unreliable)."
+          "thinking_mode": "Controls reasoning on models that think before answering. Off is fastest for voice. Server default sends nothing. Not every server honours it (LM Studio is unreliable).",
+          "mem0_enabled": "Off by default. When on, this profile can search and save long-term memories on a self-hosted Mem0 server. Nothing is sent while this is off.",
+          "mem0_url": "Base URL of the Mem0 REST server. Default is http://127.0.0.1:8888.",
+          "mem0_api_key": "Sent as the X-API-Key header. Leave blank if the server does not require a key.",
+          "mem0_user_id": "Mem0 user id that scopes this profile's memories. Default is homeassistant.",
+          "mem0_auto_save": "Off by default. When on, each finished turn is sent to Mem0 in the background. Skipped if save_memory already ran in that turn. If Mem0 cannot be reached, the conversation still completes."
         }
       },
       "mcp_server": {

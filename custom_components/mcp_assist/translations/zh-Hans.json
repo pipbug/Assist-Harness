@@ -120,6 +120,11 @@
           "timeout": "响应超时",
           "thinking_mode": "思考",
           "debug_mode": "调试模式",
+          "mem0_enabled": "Mem0 长期记忆",
+          "mem0_url": "Mem0 服务器 URL",
+          "mem0_api_key": "Mem0 API 密钥",
+          "mem0_user_id": "Mem0 用户 ID",
+          "mem0_auto_save": "将对话轮次保存到 Mem0",
           "ollama_keep_alive": "保持Ollama活跃",
           "ollama_num_ctx": "Ollama上下文窗口",
           "clean_responses": "清理语音输出响应",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "负责回应此配置文件请求的 OpenClaw 代理。必须与 OpenClaw 中已配置的代理一致。默认值为 'main'。",
           "openclaw_session_mode": "'Per conversation' 为每个 Home Assistant 对话分配独立的 OpenClaw 会话，后续提问保留在该会话中。'Fixed' 将所有请求发送到会话密钥中指定的同一个会话。",
           "api_key": "云服务商必填。本地服务器（LM Studio、llama.cpp、Ollama、vLLM）可选：除非服务器需要密钥，否则留空。",
-          "thinking_mode": "控制会在回答前思考的模型的推理。关闭对语音最快。服务器默认不发送任何设置。并非所有服务器都支持（LM Studio 不稳定）。"
+          "thinking_mode": "控制会在回答前思考的模型的推理。关闭对语音最快。服务器默认不发送任何设置。并非所有服务器都支持（LM Studio 不稳定）。",
+          "mem0_enabled": "默认关闭。开启后，此配置文件可以在自托管的 Mem0 服务器上搜索并保存长期记忆。关闭时不会发送任何内容。",
+          "mem0_url": "Mem0 REST 服务器的基址。默认是 http://127.0.0.1:8888。",
+          "mem0_api_key": "作为 X-API-Key 请求头发送。如果服务器不需要密钥，请留空。",
+          "mem0_user_id": "用于区分此配置文件记忆的 Mem0 用户 ID。默认是 homeassistant。",
+          "mem0_auto_save": "默认关闭。开启后，每一轮完成的对话会在后台发送到 Mem0。如果该轮已经运行过 save_memory，则会跳过。即使无法连接 Mem0，对话仍会完成。"
         }
       },
       "mcp_server": {

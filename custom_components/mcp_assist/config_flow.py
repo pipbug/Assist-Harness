@@ -25,6 +25,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .localization import get_language_instruction, get_follow_up_phrases, get_end_words
+from .custom_tools.mem0_memory import options_schema as mem0_options_schema
 
 from .const import (
     DOMAIN,
@@ -1826,6 +1827,11 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                     ): bool,
                 }
             )
+
+        # Mem0 options apply where this integration runs the tool loop.
+        # OpenClaw and Hermes keep their own agent memory.
+        if server_type not in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            schema_dict.update(mem0_options_schema({**data, **options}))
 
         # Create the schema from the built dictionary
         options_schema = vol.Schema(

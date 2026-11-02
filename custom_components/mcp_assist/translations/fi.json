@@ -120,6 +120,11 @@
           "timeout": "Vastauksen aikakatkaisu",
           "thinking_mode": "Ajattelu",
           "debug_mode": "Virheenkorjaustila",
+          "mem0_enabled": "Mem0-pitkäkestoinen muisti",
+          "mem0_url": "Mem0-palvelimen URL",
+          "mem0_api_key": "Mem0-API-avain",
+          "mem0_user_id": "Mem0-käyttäjätunnus",
+          "mem0_auto_save": "Tallenna vuorot Mem0:aan",
           "ollama_keep_alive": "Pida Ollama aktiivisena",
           "ollama_num_ctx": "Ollaman konteksti-ikkuna",
           "clean_responses": "Puhdista vastaukset äänilähtöä varten",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "OpenClaw-agentti, joka vastaa tämän profiilin pyyntöihin. Sen on vastattava OpenClawissa määritettyä agenttia. Oletus on 'main'.",
           "openclaw_session_mode": "'Per conversation' antaa jokaiselle Home Assistant -keskustelulle oman OpenClaw-istunnon, ja jatkokysymykset pysyvät siinä. 'Fixed' lähettää kaikki pyynnöt yhteen Istuntoavain-kentässä määritettyyn istuntoon.",
           "api_key": "Pakollinen pilvipalveluntarjoajille. Valinnainen paikallisille palvelimille (LM Studio, llama.cpp, Ollama, vLLM): jätä tyhjäksi, ellei palvelin vaadi avainta.",
-          "thinking_mode": "Ohjaa päättelyä malleissa, jotka ajattelevat ennen vastaamista. Pois on puheelle nopein. Palvelimen oletus ei lähetä mitään. Kaikki palvelimet eivät noudata asetusta (epäluotettava LM Studiossa)."
+          "thinking_mode": "Ohjaa päättelyä malleissa, jotka ajattelevat ennen vastaamista. Pois on puheelle nopein. Palvelimen oletus ei lähetä mitään. Kaikki palvelimet eivät noudata asetusta (epäluotettava LM Studiossa).",
+          "mem0_enabled": "Oletuksena pois päältä. Käytössä tämä profiili voi hakea ja tallentaa pitkäkestoisia muistoja itse ylläpidetyltä Mem0-palvelimelta. Pois päältä ollessa mitään ei lähetetä.",
+          "mem0_url": "Mem0-REST-palvelimen perusosoite. Oletus on http://127.0.0.1:8888.",
+          "mem0_api_key": "Lähetetään X-API-Key-otsikkona. Jätä tyhjäksi, jos palvelin ei vaadi avainta.",
+          "mem0_user_id": "Mem0-käyttäjätunnus, joka rajaa tämän profiilin muistot. Oletus on homeassistant.",
+          "mem0_auto_save": "Oletuksena pois päältä. Käytössä jokainen valmis vuoro lähetetään Mem0:lle taustalla. Ohitetaan, jos save_memory ehti jo tässä vuorossa. Jos Mem0:een ei saada yhteyttä, keskustelu valmistuu silti."
         }
       },
       "mcp_server": {

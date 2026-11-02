@@ -120,6 +120,11 @@
           "timeout": "Yanit Zaman Asimi",
           "thinking_mode": "Düşünme",
           "debug_mode": "Hata Ayiklama Modu",
+          "mem0_enabled": "Mem0 uzun süreli bellek",
+          "mem0_url": "Mem0 sunucu URL'si",
+          "mem0_api_key": "Mem0 API anahtarı",
+          "mem0_user_id": "Mem0 kullanıcı kimliği",
+          "mem0_auto_save": "Turları Mem0'a kaydet",
           "ollama_keep_alive": "Ollama'yi Aktif Tut",
           "ollama_num_ctx": "Ollama Baglam Penceresi",
           "clean_responses": "Sesli Çıktı İçin Yanıtları Temizle",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "Bu profilin isteklerini yanıtlayan OpenClaw ajanı. OpenClaw'da yapılandırılmış bir ajanla eşleşmelidir. Varsayılan 'main' değeridir.",
           "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
           "api_key": "Bulut sağlayıcıları için gereklidir. Yerel sunucular (LM Studio, llama.cpp, Ollama, vLLM) için isteğe bağlıdır: sunucu anahtar istemiyorsa boş bırakın.",
-          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil)."
+          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil).",
+          "mem0_enabled": "Varsayılan olarak kapalı. Açıkken bu profil, kendi barındırdığınız bir Mem0 sunucusunda uzun süreli anıları arayabilir ve kaydedebilir. Kapalıyken hiçbir şey gönderilmez.",
+          "mem0_url": "Mem0 REST sunucusunun temel URL'si. Varsayılan http://127.0.0.1:8888.",
+          "mem0_api_key": "X-API-Key başlığı olarak gönderilir. Sunucu anahtar istemiyorsa boş bırakın.",
+          "mem0_user_id": "Bu profilin anılarını ayıran Mem0 kullanıcı kimliği. Varsayılan homeassistant.",
+          "mem0_auto_save": "Varsayılan olarak kapalı. Açıkken her tamamlanan tur arka planda Mem0'a gönderilir. O turda save_memory zaten çalıştıysa atlanır. Mem0'a ulaşılamazsa konuşma yine de tamamlanır."
         }
       },
       "mcp_server": {
