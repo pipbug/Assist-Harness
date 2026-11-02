@@ -120,6 +120,11 @@
           "timeout": "応答タイムアウト",
           "thinking_mode": "思考",
           "debug_mode": "デバッグモード",
+          "mem0_enabled": "Mem0 長期メモリ",
+          "mem0_url": "Mem0 サーバー URL",
+          "mem0_api_key": "Mem0 API キー",
+          "mem0_user_id": "Mem0 ユーザー ID",
+          "mem0_auto_save": "ターンを Mem0 に保存",
           "ollama_keep_alive": "Ollamaを維持",
           "ollama_num_ctx": "Ollamaコンテキストウィンドウ",
           "clean_responses": "音声出力用にレスポンスを整形",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "このプロファイルのリクエストに応答するOpenClawエージェントです。OpenClawで設定済みのエージェントと一致する必要があります。デフォルトは 'main' です。",
           "openclaw_session_mode": "'Per conversation' は、Home Assistantの会話ごとに専用のOpenClawセッションを割り当て、フォローアップの質問はその中で続きます。'Fixed' は、すべてのリクエストをセッションキーで指定した1つのセッションに送ります。",
           "api_key": "クラウドプロバイダーでは必須です。ローカルサーバー（LM Studio、llama.cpp、Ollama、vLLM）では任意です。サーバーがキーを要求しない場合は空欄にしてください。",
-          "thinking_mode": "回答前に思考するモデルの推論を制御します。オフが音声では最速です。サーバー既定では何も送信しません。すべてのサーバーが対応しているわけではありません（LM Studio では不安定）。"
+          "thinking_mode": "回答前に思考するモデルの推論を制御します。オフが音声では最速です。サーバー既定では何も送信しません。すべてのサーバーが対応しているわけではありません（LM Studio では不安定）。",
+          "mem0_enabled": "既定ではオフです。オンにすると、このプロファイルはセルフホストした Mem0 サーバーで長期的な記憶を検索・保存できます。オフの間は何も送信されません。",
+          "mem0_url": "Mem0 REST サーバーのベース URL。既定は http://127.0.0.1:8888 です。",
+          "mem0_api_key": "X-API-Key ヘッダーとして送信します。サーバーがキーを要求しない場合は空のままにします。",
+          "mem0_user_id": "このプロファイルの記憶を分ける Mem0 ユーザー ID。既定は homeassistant です。",
+          "mem0_auto_save": "既定ではオフです。オンにすると、完了した各ターンがバックグラウンドで Mem0 に送られます。そのターンで save_memory が既に実行されていればスキップします。Mem0 に到達できなくても会話は完了します。"
         }
       },
       "mcp_server": {

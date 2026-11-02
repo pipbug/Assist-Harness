@@ -121,6 +121,11 @@
           "timeout": "Antwort-Timeout",
           "thinking_mode": "Denken",
           "debug_mode": "Debug-Modus",
+          "mem0_enabled": "Mem0-Langzeitgedächtnis",
+          "mem0_url": "Mem0-Server-URL",
+          "mem0_api_key": "Mem0-API-Schlüssel",
+          "mem0_user_id": "Mem0-Benutzer-ID",
+          "mem0_auto_save": "Unterhaltungen in Mem0 speichern",
           "ollama_keep_alive": "Ollama am Leben halten",
           "ollama_num_ctx": "Ollama Kontextfenster",
           "openclaw_agent_id": "Agent-ID",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "Der OpenClaw-Agent, der die Anfragen dieses Profils beantwortet. Er muss einem in OpenClaw eingerichteten Agenten entsprechen. Standard ist 'main'.",
           "openclaw_session_mode": "'Per conversation' gibt jeder Unterhaltung in Home Assistant eine eigene OpenClaw-Sitzung, in der Folgefragen bleiben. 'Fixed' sendet alle Anfragen an die eine Sitzung aus dem Sitzungsschlüssel.",
           "api_key": "Für Cloud-Anbieter erforderlich. Für lokale Server (LM Studio, llama.cpp, Ollama, vLLM) optional: leer lassen, sofern der Server keinen Schlüssel verlangt.",
-          "thinking_mode": "Steuert das Nachdenken bei Modellen, die vor der Antwort überlegen. Aus ist für Sprache am schnellsten. Server-Standard sendet nichts. Nicht jeder Server beachtet die Einstellung (bei LM Studio unzuverlässig)."
+          "thinking_mode": "Steuert das Nachdenken bei Modellen, die vor der Antwort überlegen. Aus ist für Sprache am schnellsten. Server-Standard sendet nichts. Nicht jeder Server beachtet die Einstellung (bei LM Studio unzuverlässig).",
+          "mem0_enabled": "Standardmäßig aus. Wenn an, kann dieses Profil Langzeiterinnerungen auf einem selbst gehosteten Mem0-Server suchen und speichern. Solange es aus ist, wird nichts gesendet.",
+          "mem0_url": "Basis-URL des Mem0-REST-Servers. Standard ist http://127.0.0.1:8888.",
+          "mem0_api_key": "Wird als X-API-Key-Header gesendet. Leer lassen, wenn der Server keinen Schlüssel verlangt.",
+          "mem0_user_id": "Mem0-Benutzer-ID, die die Erinnerungen dieses Profils abgrenzt. Standard ist homeassistant.",
+          "mem0_auto_save": "Standardmäßig aus. Wenn an, wird jede abgeschlossene Runde im Hintergrund an Mem0 gesendet. Wird übersprungen, wenn save_memory in dieser Runde bereits lief. Ist Mem0 nicht erreichbar, wird die Unterhaltung trotzdem abgeschlossen."
         }
       },
       "mcp_server": {

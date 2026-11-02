@@ -14,6 +14,7 @@ A Home Assistant conversation agent that uses MCP (Model Context Protocol) for e
 - ✅ **Dynamic Discovery**: Finds entities by area, type, device_class, state, or name on-demand
 - ✅ **Thinking Control**: Turn reasoning off (or set its level) per profile for faster voice replies
 - ✅ **Web Search Tools**: Optional DuckDuckGo, Brave Search, or SearXNG integration for current information
+- ✅ **Long-term Memory**: Optional, off by default. `recall_memory` and `save_memory` against a self-hosted Mem0 server, plus an optional background save of each turn
 - ✅ **Works with 1000+ Entities**: Efficient even with large Home Assistant installations
 - ✅ **Multi-Profile Support**: Run multiple conversation agents with different models
 
@@ -212,6 +213,10 @@ MCP Assist supports **21 languages** with localized configuration interfaces, la
 - "Search for the latest Home Assistant updates"
 - "What time does the store close?"
 
+### Long-term memory (if enabled)
+- "Remember that I take my coffee black"
+- "What kind of tea do I like?"
+
 ## OpenClaw
 
 With the **OpenClaw** server type, MCP Assist sends each voice request to an agent on your OpenClaw gateway, which answers using its own tools and memory. Settings (Configure on the profile):
@@ -279,6 +284,25 @@ Temperature controls response randomness (0.0 = deterministic, 1.0 = creative). 
 - **Brave Search API Key**: Required only if using Brave Search
 - **SearXNG URL**: Address of your instance (e.g. `http://192.168.1.10:8888`), required only if using SearXNG
 
+### Long-term memory (Mem0)
+
+Optional, and off unless you turn it on. Point a profile at a self-hosted [Mem0](https://github.com/mem0ai/mem0) server (REST API) so the assistant can remember facts across conversations. These fields are on the profile options form for local and cloud LLM profiles. OpenClaw and Hermes are not shown them: those agents already keep their own memory and do not run this integration's tool loop.
+
+- **Mem0 long-term memory**: Master switch. Default off. While off, `recall_memory` and `save_memory` are not offered and nothing is sent to Mem0.
+- **Mem0 server URL**: Base URL of the Mem0 REST server. Default `http://127.0.0.1:8888`.
+- **Mem0 API key**: Sent as the `X-API-Key` header. Leave blank if the server does not require a key.
+- **Mem0 user ID**: Namespace for this profile's memories. Default `homeassistant`. Use a different id per person if several profiles share one Mem0 server.
+- **Save turns to Mem0**: Default off. When on, each finished turn is posted in the background (`POST /memories`) so Mem0 can extract facts. The reply is not delayed. If `save_memory` already ran during that turn, the automatic save is skipped so the fact is stored once.
+
+While any profile has memory enabled, the shared MCP server exposes:
+
+- `recall_memory(query)` — search stored memories for that profile's user id
+- `save_memory(fact)` — store one fact, in the background
+
+Recall and save on the shared server use the **first profile that has Mem0 enabled**, because every profile shares one MCP server. Automatic turn saves use the profile that handled the conversation.
+
+If Mem0 is unreachable, times out, or returns an error, the tools reply with a short "unavailable" message and a warning is logged. The conversation still completes.
+
 ### Shared vs Per-Profile Settings
 
 MCP Assist has two types of settings:
@@ -289,6 +313,7 @@ MCP Assist has two types of settings:
 - Debug mode, max iterations, timeout
 - Server URL and API key
 - OpenClaw agent ID, session mode and session key
+- Mem0 long-term memory (enable, server URL, API key, user id, save turns)
 
 **Shared Settings** (affect ALL profiles):
 - MCP server port

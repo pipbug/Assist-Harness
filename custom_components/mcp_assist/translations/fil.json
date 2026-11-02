@@ -120,6 +120,11 @@
           "timeout": "Response Time Out",
           "thinking_mode": "Pag-iisip",
           "debug_mode": "Debug Mode",
+          "mem0_enabled": "Pangmatagalang memorya ng Mem0",
+          "mem0_url": "URL ng server ng Mem0",
+          "mem0_api_key": "API key ng Mem0",
+          "mem0_user_id": "User ID ng Mem0",
+          "mem0_auto_save": "I-save ang mga turn sa Mem0",
           "ollama_keep_alive": "Panatilihing Aktibo ang Ollama",
           "ollama_num_ctx": "Ollama Context Window",
           "clean_responses": "Linisin ang mga Tugon para sa Voice Output",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "Ang OpenClaw agent na sumasagot sa mga kahilingan ng profile na ito. Dapat itong tumugma sa agent na naka-configure sa OpenClaw. Ang default ay 'main'.",
           "openclaw_session_mode": "Binibigyan ng 'Per conversation' ang bawat Home Assistant conversation ng sarili nitong OpenClaw session, at nananatili roon ang mga follow-up na tanong. Ipinapadala ng 'Fixed' ang lahat ng kahilingan sa iisang session na itinakda sa Session Key.",
           "api_key": "Kailangan para sa mga cloud provider. Opsyonal para sa mga lokal na server (LM Studio, llama.cpp, Ollama, vLLM): iwanang blangko maliban kung nangangailangan ng key ang server.",
-          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio)."
+          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio).",
+          "mem0_enabled": "Naka-off bilang default. Kapag naka-on, maaaring maghanap at mag-save ng pangmatagalang alaala ang profile na ito sa self-hosted na Mem0 server. Walang ipinapadala habang naka-off ito.",
+          "mem0_url": "Base URL ng Mem0 REST server. Ang default ay http://127.0.0.1:8888.",
+          "mem0_api_key": "Ipinapadala bilang X-API-Key header. Iwanang blangko kung hindi nangangailangan ng key ang server.",
+          "mem0_user_id": "Mem0 user id na humuhuwag sa mga alaala ng profile na ito. Ang default ay homeassistant.",
+          "mem0_auto_save": "Naka-off bilang default. Kapag naka-on, ipinapadala ang bawat tapos na turn sa Mem0 sa background. Nilalaktawan kung tumakbo na ang save_memory sa turn na iyon. Kung hindi maabot ang Mem0, matatapos pa rin ang usapan."
         }
       },
       "mcp_server": {

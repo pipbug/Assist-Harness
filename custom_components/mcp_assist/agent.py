@@ -111,6 +111,7 @@ from .const import (
     MIN_REASONING_COMPLETION_TOKENS,
 )
 from .conversation_history import ConversationHistory
+from .custom_tools import mem0_memory
 from .localization import get_spoken_symbols
 
 _LOGGER = logging.getLogger(__name__)
@@ -126,6 +127,7 @@ READ_ONLY_TOOLS = frozenset(
         "get_index",
         "search",
         "read_url",
+        "recall_memory",
     }
 )
 
@@ -827,6 +829,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         self, user_input: ConversationInput, conversation_id: str
     ) -> ConversationResult:
         """Process user input with ChatLog tracking."""
+        mem0_memory.begin_turn()
         try:
             _LOGGER.debug("Conversation ID: %s", conversation_id)
 
@@ -1190,6 +1193,11 @@ class MCPAssistConversationEntity(ConversationEntity):
         # Store in conversation history
         self.history.add_turn(
             conversation_id, user_input.text, response_text, actions=actions_taken
+        )
+
+        # Background Mem0 extraction. No-op unless this profile opted in.
+        mem0_memory.schedule_turn_save(
+            self.hass, self.entry, user_input.text, response_text
         )
 
         # Create intent response
@@ -1859,6 +1867,8 @@ class MCPAssistConversationEntity(ConversationEntity):
         arguments_str = function.get("arguments")
 
         _LOGGER.info(f"📞 Processing tool call {tool_call_id}: {tool_name}")
+        # An explicit save_memory in this turn suppresses the automatic turn save.
+        mem0_memory.note_tool_call(tool_name)
 
         try:
             arguments = self._parse_tool_arguments(arguments_str)

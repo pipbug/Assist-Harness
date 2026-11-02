@@ -120,6 +120,11 @@
           "timeout": "Limit czasu odpowiedzi",
           "thinking_mode": "Myślenie",
           "debug_mode": "Tryb debugowania",
+          "mem0_enabled": "Pamięć długoterminowa Mem0",
+          "mem0_url": "URL serwera Mem0",
+          "mem0_api_key": "Klucz API Mem0",
+          "mem0_user_id": "ID użytkownika Mem0",
+          "mem0_auto_save": "Zapisuj tury w Mem0",
           "ollama_keep_alive": "Utrzymuj Ollama aktywne",
           "ollama_num_ctx": "Okno kontekstu Ollama",
           "clean_responses": "Czyste odpowiedzi dla wyjścia głosowego",
@@ -135,7 +140,12 @@
           "openclaw_agent_id": "Agent OpenClaw, który odpowiada na żądania tego profilu. Musi odpowiadać agentowi skonfigurowanemu w OpenClaw. Domyślnie 'main'.",
           "openclaw_session_mode": "'Per conversation' daje każdej rozmowie w Home Assistant własną sesję OpenClaw, w której pozostają pytania uzupełniające. 'Fixed' wysyła wszystkie żądania do jednej sesji ustawionej w polu Klucz sesji.",
           "api_key": "Wymagany dla dostawców chmurowych. Opcjonalny dla serwerów lokalnych (LM Studio, llama.cpp, Ollama, vLLM): pozostaw puste, chyba że serwer wymaga klucza.",
-          "thinking_mode": "Steruje rozumowaniem modeli, które myślą przed odpowiedzią. Wyłączone jest najszybsze dla głosu. Domyślne serwera nic nie wysyła. Nie każdy serwer to respektuje (w LM Studio działa zawodnie)."
+          "thinking_mode": "Steruje rozumowaniem modeli, które myślą przed odpowiedzią. Wyłączone jest najszybsze dla głosu. Domyślne serwera nic nie wysyła. Nie każdy serwer to respektuje (w LM Studio działa zawodnie).",
+          "mem0_enabled": "Domyślnie wyłączone. Po włączeniu ten profil może wyszukiwać i zapisywać długoterminowe wspomnienia na samodzielnie hostowanym serwerze Mem0. Gdy jest wyłączone, nic nie jest wysyłane.",
+          "mem0_url": "Bazowy URL serwera REST Mem0. Domyślnie http://127.0.0.1:8888.",
+          "mem0_api_key": "Wysyłany w nagłówku X-API-Key. Pozostaw puste, jeśli serwer nie wymaga klucza.",
+          "mem0_user_id": "Identyfikator użytkownika Mem0, który oddziela wspomnienia tego profilu. Domyślnie homeassistant.",
+          "mem0_auto_save": "Domyślnie wyłączone. Po włączeniu każda zakończona tura jest wysyłana do Mem0 w tle. Pomijane, jeśli save_memory już działało w tej turze. Gdy Mem0 jest niedostępne, rozmowa i tak się kończy."
         }
       },
       "mcp_server": {

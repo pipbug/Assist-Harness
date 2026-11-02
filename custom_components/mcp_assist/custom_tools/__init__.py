@@ -14,7 +14,7 @@ class CustomToolsLoader:
         self.tools = {}
 
     async def initialize(self):
-        """Initialize custom tools based on search provider selection."""
+        """Initialize custom tools from the current search and memory settings."""
         # Determine search provider
         search_provider = self._get_search_provider()
 
@@ -57,6 +57,16 @@ class CustomToolsLoader:
                 _LOGGER.debug("✅ Read URL tool initialized")
             except Exception as e:
                 _LOGGER.error(f"Failed to initialize read_url tool: {e}")
+
+        # Listed only while a profile has Mem0 enabled.
+        try:
+            from .mem0_memory import Mem0MemoryTool
+
+            self.tools["mem0_memory"] = Mem0MemoryTool(self.hass)
+            await self.tools["mem0_memory"].initialize()
+            _LOGGER.debug("✅ Mem0 memory tool initialized")
+        except Exception as e:
+            _LOGGER.error(f"Failed to initialize Mem0 memory tool: {e}")
 
     def _get_shared_setting(self, key: str, default: Any = None) -> Any:
         """Get a shared setting from system entry with fallback to profile entry."""
