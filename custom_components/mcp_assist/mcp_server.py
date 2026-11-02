@@ -224,7 +224,8 @@ class MCPServer:
             # Create and initialize custom tools if search provider is enabled
             # Done here (not in __init__) so system entry exists for reading settings
             search_provider = self._get_search_provider()
-            if search_provider in ["brave", "duckduckgo", "searxng"]:
+            # [kestrel] always load custom tools: Mem0 tools don't depend on search
+            if True:
                 try:
                     from .custom_tools import CustomToolsLoader
 

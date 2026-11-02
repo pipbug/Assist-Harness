@@ -112,6 +112,7 @@ from .const import (
 )
 from .conversation_history import ConversationHistory
 from .localization import get_spoken_symbols
+from .custom_tools import mem0_memory  # [kestrel]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -779,11 +780,16 @@ class MCPAssistConversationEntity(ConversationEntity):
             return
 
         try:
+            # [kestrel] HA 2026.10 renamed tool_result= to result=llm.ToolResult(...)
+            if hasattr(llm, "ToolResult"):
+                result_kw = {"result": llm.ToolResult(data=tool_result)}
+            else:
+                result_kw = {"tool_result": tool_result}
             result_content = chat_log.ToolResultContent(
                 agent_id=self.entity_id,
                 tool_call_id=tool_call_id,
                 tool_name=tool_name,
-                tool_result=tool_result,
+                **result_kw,
             )
             # Use callback method to add tool result
             self._current_chat_log.async_add_assistant_content_without_tools(
@@ -821,6 +827,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         self, user_input: ConversationInput, conversation_id: str
     ) -> ConversationResult:
         """Process user input with ChatLog tracking."""
+        mem0_memory.begin_turn()  # [kestrel]
         try:
             _LOGGER.debug("Conversation ID: %s", conversation_id)
 
@@ -1184,6 +1191,11 @@ class MCPAssistConversationEntity(ConversationEntity):
         # Store in conversation history
         self.history.add_turn(
             conversation_id, user_input.text, response_text, actions=actions_taken
+        )
+
+        # [kestrel] Mem0: extract memories from this turn in the background
+        mem0_memory.schedule_turn_save(
+            self.hass, self.entry, user_input.text, response_text
         )
 
         # Create intent response
@@ -1853,6 +1865,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         arguments_str = function.get("arguments")
 
         _LOGGER.info(f"📞 Processing tool call {tool_call_id}: {tool_name}")
+        mem0_memory.note_tool_call(tool_name)  # [kestrel] skip the turn save after save_memory
 
         try:
             arguments = self._parse_tool_arguments(arguments_str)

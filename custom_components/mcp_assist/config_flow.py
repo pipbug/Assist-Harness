@@ -25,6 +25,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .localization import get_language_instruction, get_follow_up_phrases, get_end_words
+from .custom_tools import mem0_memory  # [kestrel]
 
 from .const import (
     DOMAIN,
@@ -1826,6 +1827,10 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                     ): bool,
                 }
             )
+
+        # [kestrel] Mem0 long-term memory settings (per profile)
+        if server_type not in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            schema_dict.update(mem0_memory.options_schema({**data, **options}))
 
         # Create the schema from the built dictionary
         options_schema = vol.Schema(
