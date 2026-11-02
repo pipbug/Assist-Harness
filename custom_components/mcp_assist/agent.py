@@ -779,11 +779,17 @@ class MCPAssistConversationEntity(ConversationEntity):
             return
 
         try:
+            # Home Assistant 2026.10 renamed this argument to result=llm.ToolResult.
+            # Older cores still take tool_result=.
+            if hasattr(llm, "ToolResult"):
+                result_kw = {"result": llm.ToolResult(data=tool_result)}
+            else:
+                result_kw = {"tool_result": tool_result}
             result_content = chat_log.ToolResultContent(
                 agent_id=self.entity_id,
                 tool_call_id=tool_call_id,
                 tool_name=tool_name,
-                tool_result=tool_result,
+                **result_kw,
             )
             # Use callback method to add tool result
             self._current_chat_log.async_add_assistant_content_without_tools(
