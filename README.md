@@ -401,3 +401,41 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Issues**: [GitHub Issues](https://github.com/mike-nott/mcp-assist/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/mike-nott/mcp-assist/discussions)
 - **Home Assistant Community**: [Community Forum](https://community.home-assistant.io/)
+
+---
+
+## Kestrel fork (`0.19.1-kestrel.1`)
+
+This fork of [mike-nott/mcp-assist](https://github.com/mike-nott/mcp-assist) at tag `v0.19.1` adds
+long-term memory backed by a self-hosted [Mem0](https://github.com/mem0ai/mem0) server (REST API,
+`X-API-Key` auth). Every fork change is marked `[kestrel]`.
+
+- `custom_tools/mem0_memory.py` (new): tools `recall_memory(query)` and `save_memory(fact)`, plus a
+  background save of each finished turn (`POST /memories`, user + assistant message). Saves are
+  fire-and-forget tasks; failures only log a warning, so a Mem0 outage never breaks replies.
+- `custom_tools/__init__.py`: one loader branch for the Mem0 tool. The tools are listed only while
+  a profile has Mem0 enabled.
+- `mcp_server.py`: the custom-tools loader is always created (upstream creates it only when a web
+  search provider is set).
+- `agent.py`: one call to `schedule_turn_save()` after the turn is stored in history; also the
+  `ToolResultContent(result=llm.ToolResult(...))` fix for HA 2026.10's ChatLog API.
+- `config_flow.py`, `strings.json`, `translations/en.json`: profile options **Mem0 long-term
+  memory** (toggle), **Mem0 server URL** (default `http://127.0.0.1:8888`), **Mem0 API key**,
+  **Mem0 user ID** (default `kira`).
+
+### Rebasing onto a new upstream release
+
+```bash
+git remote add upstream https://github.com/mike-nott/mcp-assist.git   # once
+git fetch upstream --tags
+git rebase --onto vX.Y.Z v0.19.1 kestrel      # replay the fork commit(s) onto the new tag
+# conflicts are limited to the [kestrel] hunks; re-check that upstream still has:
+#   CustomToolsLoader.initialize, MCPServer.start's custom-tools block,
+#   ConversationAgent._build_response_result (history.add_turn), the options-flow init schema
+# drop the ToolResultContent hunk if upstream fixed it
+# set manifest.json "version" to "X.Y.Z-kestrel.1", then
+git format-patch vX.Y.Z --stdout > kestrel-mem0.patch
+```
+
+Without git: `git apply kestrel-mem0.patch` (or `patch -p1 < kestrel-mem0.patch`) on a clean copy
+of the new release, then fix any rejected hunks by hand.

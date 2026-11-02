@@ -58,6 +58,14 @@ class CustomToolsLoader:
             except Exception as e:
                 _LOGGER.error(f"Failed to initialize read_url tool: {e}")
 
+        # [kestrel] Mem0 memory tools (listed only while a profile enables Mem0)
+        try:
+            from .mem0_memory import Mem0MemoryTool
+            self.tools["mem0_memory"] = Mem0MemoryTool(self.hass)
+            await self.tools["mem0_memory"].initialize()
+        except Exception as e:
+            _LOGGER.error(f"Failed to initialize Mem0 memory tool: {e}")
+
     def _get_shared_setting(self, key: str, default: Any = None) -> Any:
         """Get a shared setting from system entry with fallback to profile entry."""
         # Import here to avoid circular dependency
