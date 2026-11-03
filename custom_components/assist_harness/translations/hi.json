@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "प्रोफ़ाइल सेटिंग्स",
-        "description": "{server_info}",
+        "title": "प्रोफ़ाइल",
+        "description": "चुनें कि इस प्रोफ़ाइल में क्या बदलना है।",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "प्रोफ़ाइल सेटिंग्स",
+          "profile_tools": "उपकरण"
         }
       },
       "mcp_server": {

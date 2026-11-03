@@ -118,8 +118,8 @@
   "options": {
     "step": {
       "init": {
-        "title": "Profile Settings",
-        "description": "{server_info}",
+        "title": "Profile",
+        "description": "Choose what to change for this profile.",
         "menu_options": {
           "profile": "Profile settings",
           "profile_tools": "Tools"

@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "اعدادات الملف الشخصي",
-        "description": "{server_info}",
+        "title": "الملف الشخصي",
+        "description": "اختر ما تريد تغييره لهذا الملف الشخصي.",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "إعدادات الملف الشخصي",
+          "profile_tools": "الأدوات"
         }
       },
       "mcp_server": {

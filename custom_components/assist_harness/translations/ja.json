@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "プロファイル設定",
-        "description": "{server_info}",
+        "title": "プロファイル",
+        "description": "このプロファイルで変更する項目を選んでください。",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "プロファイル設定",
+          "profile_tools": "ツール"
         }
       },
       "mcp_server": {

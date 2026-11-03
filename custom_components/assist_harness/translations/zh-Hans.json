@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "配置文件设置",
-        "description": "{server_info}",
+        "title": "配置文件",
+        "description": "选择要更改此配置文件的哪些内容。",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "配置文件设置",
+          "profile_tools": "工具"
         }
       },
       "mcp_server": {

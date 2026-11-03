@@ -75,7 +75,7 @@ Mem0 talks to a self-hosted server (`X-API-Key`, `/memories`, `/search`) or to t
 
 ### Upgrading an Assist Harness entry
 
-Config entries are version 2. On startup, version 1 entries are migrated in place:
+Assist Harness **0.21.0** stores tools as config subentries (config entry version 3). On startup, version 1 and version 2 entries are migrated in place:
 
 - `search_provider: brave`, `duckduckgo`, or `searxng` becomes that search tool plus `read_url`. An old `enable_custom_tools: true` with no provider becomes Brave plus `read_url`. `none` adds neither.
 - The Brave API key and SearXNG URL move onto those tools.

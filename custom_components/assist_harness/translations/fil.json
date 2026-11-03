@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Mga Setting ng Profile",
-        "description": "{server_info}",
+        "title": "Profile",
+        "description": "Piliin kung ano ang babaguhin para sa profile na ito.",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "Mga setting ng profile",
+          "profile_tools": "Mga tool"
         }
       },
       "mcp_server": {

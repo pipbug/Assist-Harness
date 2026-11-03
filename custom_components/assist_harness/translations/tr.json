@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Profil Ayarlari",
-        "description": "{server_info}",
+        "title": "Profil",
+        "description": "Bu profil için neyi değiştireceğinizi seçin.",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "Profil ayarları",
+          "profile_tools": "Araçlar"
         }
       },
       "mcp_server": {

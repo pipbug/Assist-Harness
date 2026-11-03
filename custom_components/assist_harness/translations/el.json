@@ -118,11 +118,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Ρυθμισεις προφιλ",
-        "description": "{server_info}",
+        "title": "Προφίλ",
+        "description": "Επιλέξτε τι θα αλλάξετε για αυτό το προφίλ.",
         "menu_options": {
-          "profile": "Profile settings",
-          "profile_tools": "Tools"
+          "profile": "Ρυθμίσεις προφίλ",
+          "profile_tools": "Εργαλεία"
         }
       },
       "mcp_server": {

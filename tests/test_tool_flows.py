@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from homeassistant.helpers.selector import TextSelector, TextSelectorType
@@ -79,6 +80,67 @@ def test_translation_files_cover_strings_json():
                     walk(value, translated[key], f"{prefix}{key}.")
 
         walk(STRINGS, data)
+
+
+def _placeholders(text: str) -> set[str]:
+    return set(re.findall(r"\{([a-zA-Z0-9_]+)\}", text))
+
+
+def test_translation_placeholders_match_strings_json():
+    """A translated string must ask for the same {placeholders} as strings.json.
+
+    The frontend renders translations/*.json, so a leftover {server_info} there
+    crashes even when strings.json no longer has that variable.
+    """
+
+    def walk(source, translated, prefix=""):
+        if isinstance(source, dict):
+            assert isinstance(translated, dict), prefix
+            for key, value in source.items():
+                walk(value, translated[key], f"{prefix}.{key}" if prefix else key)
+            return
+        if isinstance(source, str):
+            assert _placeholders(source) == _placeholders(translated), (
+                f"{prefix} placeholders strings={_placeholders(source)} "
+                f"translation={_placeholders(translated)}"
+            )
+
+    for path in (ROOT / "custom_components/assist_harness/translations").glob("*.json"):
+        walk(STRINGS, json.loads(path.read_text()))
+
+
+def test_config_flow_steps_are_in_strings_json():
+    """Every form step and menu option in the config flow has a strings.json entry."""
+    source = (ROOT / "custom_components/assist_harness/config_flow.py").read_text()
+    options_at = source.index("class AssistHarnessOptionsFlow")
+    config_source, options_source = source[:options_at], source[options_at:]
+
+    def step_ids(text: str) -> set[str]:
+        return set(re.findall(r'step_id="([^"]+)"', text))
+
+    def menu_blocks(text: str) -> list[tuple[str, list[str]]]:
+        blocks = []
+        for match in re.finditer(
+            r'async_show_menu\(\s*step_id="([^"]+)",\s*menu_options=\[([^\]]+)\]',
+            text,
+            re.S,
+        ):
+            options = re.findall(r'"([^"]+)"', match.group(2))
+            blocks.append((match.group(1), options))
+        return blocks
+
+    for step_id in step_ids(config_source):
+        assert step_id in STRINGS["config"]["step"], step_id
+    for step_id in step_ids(options_source):
+        assert step_id in STRINGS["options"]["step"], step_id
+    for step_id, options in menu_blocks(options_source):
+        labels = STRINGS["options"]["step"][step_id]["menu_options"]
+        for option in options:
+            assert option in labels, option
+    for step_id, options in menu_blocks(config_source):
+        labels = STRINGS["config"]["step"][step_id]["menu_options"]
+        for option in options:
+            assert option in labels, option
 
 
 @pytest.mark.usefixtures("_flow_deps")
