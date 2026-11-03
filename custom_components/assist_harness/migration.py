@@ -19,6 +19,7 @@ from .const import (
     CONF_ENABLE_CUSTOM_TOOLS,
     CONF_SEARCH_PROVIDER,
     CONF_SEARXNG_URL,
+    DEFAULT_MCP_PORT,
     DOMAIN,
     SYSTEM_ENTRY_UNIQUE_ID,
 )
@@ -30,12 +31,14 @@ from .tools.mem0_memory import (
     DEFAULT_MEM0_URL,
     DEFAULT_MEM0_USER_ID,
 )
-from .tools.registry import CONF_TOOLS, discover_tool_types
+from .tools.registry import CONF_TOOLS, cached_tool_types
 
 _LOGGER = logging.getLogger(__name__)
 
 OLD_DOMAIN = "mcp_assist"
 OLD_SYSTEM_UNIQUE_ID = "mcp_assist_system_settings"
+# Port the previous integration used. Imported entries must not keep it.
+OLD_DEFAULT_MCP_PORT = 8090
 
 SEARCH_KEYS = (
     CONF_SEARCH_PROVIDER,
@@ -158,7 +161,7 @@ def migrate_mapping(
 
 
 def shared_type_ids() -> set[str]:
-    return {tool_id for tool_id, tool in discover_tool_types().items() if tool.shared}
+    return {tool_id for tool_id, tool in cached_tool_types().items() if tool.shared}
 
 
 def _entry_tools(data: dict, options: dict) -> list[dict]:
@@ -229,23 +232,60 @@ def plan_migrations(entries) -> list[dict[str, Any]]:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Upgrade one config entry from version 1 to version 2."""
-    if entry.version >= 2:
+    """Upgrade one config entry to version 3 (tools as subentries)."""
+    from .tool_flow import attach_subentries, subentries_for_tools
+    from .tools.registry import async_ensure_tool_types
+
+    await async_ensure_tool_types(hass)
+    if entry.version >= 3:
         return True
-    entries = hass.config_entries.async_entries(DOMAIN)
-    # Include this entry even if the registry snapshot is mid-update.
-    if all(candidate.entry_id != entry.entry_id for candidate in entries):
-        entries = [*entries, entry]
-    plans = {plan["unique_id"]: plan for plan in plan_migrations(entries)}
-    plan = plans.get(entry.unique_id)
-    if plan is None:
-        data, options = migrate_mapping(entry.data, entry.options, convert_search=False)
-    else:
-        data, options = plan["data"], plan["options"]
+
+    data = dict(entry.data)
+    options = dict(entry.options)
+    if entry.version < 2:
+        entries = list(hass.config_entries.async_entries(DOMAIN))
+        if all(candidate.entry_id != entry.entry_id for candidate in entries):
+            entries.append(entry)
+        plans = {plan["unique_id"]: plan for plan in plan_migrations(entries)}
+        plan = plans.get(entry.unique_id)
+        if plan is None:
+            data, options = migrate_mapping(data, options, convert_search=False)
+        else:
+            data, options = plan["data"], plan["options"]
+
+    tools = [item for item in (options.get(CONF_TOOLS) or data.get(CONF_TOOLS) or []) if isinstance(item, dict)]
+    options.pop(CONF_TOOLS, None)
+    data.pop(CONF_TOOLS, None)
+    is_system = entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID
+    if is_system and data.get("mcp_port") == OLD_DEFAULT_MCP_PORT:
+        # The previous integration's default. Keeping it would bind the same port.
+        data["mcp_port"] = DEFAULT_MCP_PORT
+    if is_system:
+        for other in hass.config_entries.async_entries(DOMAIN):
+            if other.entry_id == entry.entry_id or other.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                continue
+            tools.extend(
+                item
+                for item in (other.options.get(CONF_TOOLS) or other.data.get(CONF_TOOLS) or [])
+                if isinstance(item, dict)
+            )
     hass.config_entries.async_update_entry(
-        entry, data=data, options=options, version=2, minor_version=1
+        entry, data=data, options=options, version=3, minor_version=1
     )
-    _LOGGER.info("Migrated %s to tool instances (version 2)", entry.title)
+    if is_system:
+        attach_subentries(hass, entry, subentries_for_tools(tools))
+    else:
+        system = next(
+            (
+                candidate
+                for candidate in hass.config_entries.async_entries(DOMAIN)
+                if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID
+            ),
+            None,
+        )
+        if system is not None and tools:
+            attach_subentries(hass, system, subentries_for_tools(tools))
+    _LOGGER.info("Migrated %s to tool subentries (version 3)", entry.title)
     return True
 
 
@@ -273,11 +313,20 @@ def plan_mcp_assist_import(entries) -> list[dict[str, Any]]:
                 options=copy.deepcopy(dict(entry.options)),
             )
         )
-    # Reuse the migration planner by presenting the old unique ids.
     plans = plan_migrations(snapshots)
+    from .tool_flow import subentries_for_tools
+
+    gathered: list[dict[str, Any]] = []
     imported = []
+    has_system = False
     for plan in plans:
         is_system = plan["unique_id"] == OLD_SYSTEM_UNIQUE_ID or plan["is_system"]
+        gathered.extend(plan["options"].pop(CONF_TOOLS, []) or [])
+        if is_system:
+            has_system = True
+            port = plan["data"].get("mcp_port")
+            if port in (None, OLD_DEFAULT_MCP_PORT):
+                plan["data"]["mcp_port"] = DEFAULT_MCP_PORT
         imported.append(
             {
                 "unique_id": _map_unique_id(plan["unique_id"], is_system),
@@ -285,8 +334,25 @@ def plan_mcp_assist_import(entries) -> list[dict[str, Any]]:
                 "data": plan["data"],
                 "options": plan["options"],
                 "is_system": is_system,
+                "subentries": [],
             }
         )
+    if not has_system:
+        imported.insert(
+            0,
+            {
+                "unique_id": SYSTEM_ENTRY_UNIQUE_ID,
+                "title": "Shared MCP Server Settings",
+                "data": {"mcp_port": DEFAULT_MCP_PORT},
+                "options": {},
+                "is_system": True,
+                "subentries": [],
+            },
+        )
+    payloads = subentries_for_tools(gathered)
+    for plan in imported:
+        if plan["is_system"]:
+            plan["subentries"] = payloads
     return imported
 
 
@@ -303,7 +369,7 @@ class _ImportView:
 
 def _make_entry(plan: dict[str, Any]) -> ConfigEntry:
     return ConfigEntry(
-        version=2,
+        version=3,
         minor_version=1,
         domain=DOMAIN,
         title=plan["title"],
@@ -313,11 +379,15 @@ def _make_entry(plan: dict[str, Any]) -> ConfigEntry:
         unique_id=plan["unique_id"],
         discovery_keys=MappingProxyType({}),
         state=ConfigEntryState.NOT_LOADED,
+        subentries_data=plan.get("subentries") or (),
     )
 
 
 async def async_import_mcp_assist(hass: HomeAssistant) -> list[ConfigEntry]:
     """Copy every mcp_assist entry into Assist Harness. Originals stay untouched."""
+    from .tools.registry import async_ensure_tool_types
+
+    await async_ensure_tool_types(hass)
     old_entries = hass.config_entries.async_entries(OLD_DOMAIN)
     plans = plan_mcp_assist_import(old_entries)
     plans.sort(key=lambda plan: 0 if plan["is_system"] else 1)

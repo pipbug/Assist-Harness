@@ -1,7 +1,8 @@
-"""Options-flow steps for adding, editing, and removing tool instances.
+"""Config subentry flow for optional tools.
 
-The steps are generic: they read the tool registry, so a new tool module
-shows up here without a change to this file.
+Each tool type is a subentry type of the system entry. Home Assistant draws
+the Add, Reconfigure, and Delete actions. This module only builds the form
+from the tool's voluptuous schema.
 """
 from __future__ import annotations
 
@@ -10,7 +11,18 @@ import re
 from typing import Any
 
 import voluptuous as vol
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigSubentry,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -20,15 +32,15 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import DOMAIN, SYSTEM_ENTRY_UNIQUE_ID
-from .tools.base import Tool, ToolInstance, normalize_prefix
-from .tools.registry import CONF_PROFILE_TOOLS, CONF_TOOLS, discover_tool_types, get_registry
+from .tools.base import Tool, normalize_prefix
+from .tools.registry import cached_tool_types
 
 _LOGGER = logging.getLogger(__name__)
 
 _INSTANCE_ID = re.compile(r"^[a-z][a-z0-9_]{0,48}$")
 
 
-def _marker_default(marker) -> Any:
+def _marker_default(marker: Any) -> Any:
     raw = getattr(marker, "default", vol.UNDEFINED)
     if raw is vol.UNDEFINED:
         return vol.UNDEFINED
@@ -40,73 +52,135 @@ def _marker_default(marker) -> Any:
     return raw
 
 
-def flow_schema(tool: Tool, current: dict[str, Any], *, include_identity: bool, suggested_id: str) -> vol.Schema:
-    """Build an options form from a tool's voluptuous schema.
+def _marker_key(marker: Any) -> str:
+    return marker.schema if isinstance(marker, vol.Marker) else marker
 
-    Keys listed in ``tool.secrets`` are password fields.
-    """
-    fields: dict[Any, Any] = {}
-    if include_identity:
-        fields[vol.Required("instance_id", default=suggested_id)] = str
-    fields[vol.Optional("prefix", default=current.get("prefix", ""))] = str
-    schema = getattr(tool, "config_schema", None)
-    mapping = getattr(schema, "schema", None)
+
+def _is_secret(tool: Tool, key: str) -> bool:
+    return key in tool.secrets
+
+
+def _selector_for(tool: Tool, key: str, validator: Any) -> Any:
+    """Pick a Home Assistant selector that matches the profile forms."""
+    if _is_secret(tool, key):
+        return TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+    if key == "url" or str(key).endswith("_url"):
+        return TextSelector(TextSelectorConfig(type=TextSelectorType.URL))
+    if validator is bool:
+        return BooleanSelector()
+    if isinstance(validator, vol.In):
+        container = getattr(validator, "container", ())
+        options = [str(item) for item in container]
+        return SelectSelector(
+            SelectSelectorConfig(
+                options=options,
+                translation_key=f"tool_{key}",
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        )
+    if validator in (int, float):
+        return NumberSelector(
+            NumberSelectorConfig(mode=NumberSelectorMode.BOX)
+        )
+    return TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT))
+
+
+def tool_config_schema(tool: Tool, current: dict[str, Any] | None = None) -> vol.Schema:
+    """Form schema for one tool: name, prefix, then the tool's own fields."""
+    current = current or {}
+    fields: dict[Any, Any] = {
+        vol.Required("name", default=current.get("name") or tool.name): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.TEXT)
+        ),
+        vol.Optional("prefix", default=current.get("prefix") or ""): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.TEXT)
+        ),
+    }
+    mapping = getattr(tool.config_schema, "schema", None)
     if isinstance(mapping, dict):
         for marker, validator in mapping.items():
-            key = marker.schema if isinstance(marker, vol.Marker) else marker
+            key = _marker_key(marker)
             required = isinstance(marker, vol.Required)
             default = current.get(key, _marker_default(marker))
-            if key in tool.secrets:
-                validator = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+            selector = _selector_for(tool, str(key), validator)
             if default is vol.UNDEFINED:
                 new_marker = vol.Required(key) if required else vol.Optional(key)
             elif required:
                 new_marker = vol.Required(key, default=default)
             else:
                 new_marker = vol.Optional(key, default=default)
-            fields[new_marker] = validator
+            fields[new_marker] = selector
     return vol.Schema(fields)
 
 
-def _system_entry(hass):
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        if entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-            return entry
-    return None
+def _split_input(user_input: dict[str, Any], tool: Tool) -> tuple[str, str, dict[str, Any]]:
+    name = str(user_input.get("name") or tool.name).strip() or tool.name
+    prefix = normalize_prefix(user_input.get("prefix"))
+    config = {
+        key: value
+        for key, value in user_input.items()
+        if key not in ("name", "prefix")
+    }
+    try:
+        config = dict(tool.config_schema(config))
+    except vol.Invalid:
+        config = dict(config)
+    return name, prefix, config
 
 
-def _records(entry) -> list[dict]:
-    if entry is None:
-        return []
-    if CONF_TOOLS in entry.options:
-        return [dict(item) for item in (entry.options.get(CONF_TOOLS) or []) if isinstance(item, dict)]
-    if CONF_TOOLS in entry.data:
-        return [dict(item) for item in (entry.data.get(CONF_TOOLS) or []) if isinstance(item, dict)]
-    return []
-
-
-def _owner_entry(hass, flow_entry, tool: Tool):
-    if tool.shared:
-        return _system_entry(hass)
-    if flow_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-        return None
-    return flow_entry
-
-
-def _next_instance_id(existing: set[str], type_id: str) -> str:
-    if type_id not in existing:
-        return type_id
+def _next_instance_id(existing: set[str], type_id: str, name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    base = slug if slug and _INSTANCE_ID.match(slug) else type_id
+    if base not in existing:
+        return base
     number = 2
-    while f"{type_id}_{number}" in existing:
+    while f"{base}_{number}" in existing:
         number += 1
-    return f"{type_id}_{number}"
+    return f"{base}_{number}"
 
 
-def _preview_names(hass, tool: Tool, prefix: str, config: dict) -> list[str]:
+def _taken_names(hass, *, skip_unique_id: str | None) -> set[str]:
+    """Tool names already published by other instances."""
+    from .tools.base import ToolInstance
+
+    system = _system_entry(hass)
+    taken: set[str] = set()
+    if system is None:
+        return taken
+    types = cached_tool_types()
+    for subentry in system.subentries.values():
+        if skip_unique_id and subentry.unique_id == skip_unique_id:
+            continue
+        tool = types.get(subentry.subentry_type)
+        if tool is None:
+            continue
+        data = dict(subentry.data)
+        prefix = normalize_prefix(data.pop("prefix", ""))
+        instance = ToolInstance(
+            instance_id=subentry.unique_id or subentry.subentry_id,
+            type_id=tool.id,
+            prefix=prefix,
+            config=data,
+            entry_id=system.entry_id,
+            shared=tool.shared,
+        )
+        try:
+            definitions = tool.definitions(hass, instance) or []
+        except Exception:
+            definitions = []
+        for definition in definitions:
+            if definition.get("name"):
+                taken.add(definition["name"])
+    return taken
+
+
+def _preview_names(hass, tool: Tool, prefix: str, config: dict[str, Any]) -> list[str]:
+    from .tools.base import ToolInstance
+
     instance = ToolInstance(
         instance_id="preview",
         type_id=tool.id,
-        prefix=normalize_prefix(prefix),
+        prefix=prefix,
         config=config,
         entry_id="",
         shared=tool.shared,
@@ -115,328 +189,157 @@ def _preview_names(hass, tool: Tool, prefix: str, config: dict) -> list[str]:
         definitions = tool.definitions(hass, instance) or []
     except Exception:
         return []
-    return [item.get("name", "") for item in definitions if item.get("name")]
+    return [item["name"] for item in definitions if item.get("name")]
 
 
-class ToolFlowMixin:
-    """Tool menu steps mixed into the options flow."""
+def _system_entry(hass) -> ConfigEntry | None:
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            return entry
+    return None
 
-    def _tool_types(self) -> dict[str, Tool]:
-        return discover_tool_types()
 
-    def _flow_is_system(self) -> bool:
-        return self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID
+class ToolSubentryFlow(ConfigSubentryFlow):
+    """Add or reconfigure one tool instance."""
 
-    def _visible_instances(self) -> list[dict[str, Any]]:
-        """Instances the current options flow can show."""
-        types = self._tool_types()
-        rows: list[dict[str, Any]] = []
-        system = _system_entry(self.hass)
-        if system is not None:
-            for record in _records(system):
-                tool = types.get(record.get("type"))
-                if tool is None or not tool.shared:
-                    continue
-                rows.append(self._describe(system, record, tool, shared=True))
-        if not self._flow_is_system():
-            for record in _records(self.config_entry):
-                tool = types.get(record.get("type"))
-                if tool is None or tool.shared:
-                    continue
-                rows.append(self._describe(self.config_entry, record, tool, shared=False))
-        return rows
+    def _tool(self) -> Tool:
+        tool = cached_tool_types().get(self._subentry_type)
+        if tool is None:
+            raise KeyError(self._subentry_type)
+        return tool
 
-    def _describe(self, entry, record: dict, tool: Tool, *, shared: bool) -> dict[str, Any]:
-        instance_id = str(record.get("instance_id") or tool.id)
-        prefix = normalize_prefix(record.get("prefix"))
-        key = instance_id if shared else f"{entry.entry_id}:{instance_id}"
-        label = tool.name
-        if prefix:
-            label = f"{label} [{prefix}]"
-        if shared and not self._flow_is_system():
-            label = f"{label} (shared)"
-        return {
-            "key": key,
-            "entry_id": entry.entry_id,
-            "instance_id": instance_id,
-            "type": tool.id,
-            "prefix": prefix,
-            "config": dict(record.get("config") or {}),
-            "label": label,
-            "shared": shared,
-        }
+    def _suggested(self, tool: Tool, source: dict[str, Any]) -> dict[str, Any]:
+        suggested = {"name": source.get("name") or tool.name, "prefix": source.get("prefix") or ""}
+        mapping = getattr(tool.config_schema, "schema", None)
+        if isinstance(mapping, dict):
+            for marker, _validator in mapping.items():
+                key = _marker_key(marker)
+                if key in source:
+                    suggested[str(key)] = source[key]
+                else:
+                    default = _marker_default(marker)
+                    if default is not vol.UNDEFINED:
+                        suggested[str(key)] = default
+        return suggested
 
-    async def _persist_tools(self, entry, records: list[dict]) -> None:
-        options = dict(entry.options)
-        options[CONF_TOOLS] = records
-        kwargs: dict[str, Any] = {"options": options}
-        if CONF_TOOLS in entry.data:
-            data = dict(entry.data)
-            data.pop(CONF_TOOLS, None)
-            kwargs["data"] = data
-        self.hass.data.setdefault(DOMAIN, {})["tools_only_update"] = True
-        self.hass.config_entries.async_update_entry(entry, **kwargs)
-        registry = self.hass.data.get(DOMAIN, {}).get("tool_registry")
-        if registry is None and self.hass.data.get(DOMAIN, {}).get("shared_mcp_server") is not None:
-            registry = get_registry(self.hass)
-        if registry is not None:
-            await registry.async_reload()
-
-    async def _persist_selection(self, use_all: bool, selected: list[str]) -> None:
-        if self._flow_is_system():
-            return
-        options = dict(self.config_entry.options)
-        if use_all:
-            options.pop(CONF_PROFILE_TOOLS, None)
-        else:
-            options[CONF_PROFILE_TOOLS] = list(selected)
-        self.hass.data.setdefault(DOMAIN, {})["tools_only_update"] = True
-        self.hass.config_entries.async_update_entry(self.config_entry, options=options)
-
-    async def async_step_tools(self, user_input=None):
-        """List enabled tools and offer add, edit, or remove."""
-        errors: dict[str, str] = {}
-        instances = self._visible_instances()
-        use_all = CONF_PROFILE_TOOLS not in self.config_entry.options
-        selected_default = [row["key"] for row in instances]
-
-        if user_input is not None:
-            if not self._flow_is_system():
-                await self._persist_selection(
-                    bool(user_input.get("use_all", True)),
-                    list(user_input.get("profile_tools") or []),
-                )
-            action = user_input.get("action") or "done"
-            if action == "add":
-                return await self.async_step_tool_add()
-            if action.startswith("edit:"):
-                self._tool_edit_key = action.split(":", 1)[1]
-                return await self.async_step_tool_config()
-            if action.startswith("remove:"):
-                self._tool_remove_key = action.split(":", 1)[1]
-                return await self.async_step_tool_remove()
-            if self._flow_is_system():
-                return self.async_abort(reason="tools_updated")
-            return await self.async_step_profile_next()
-
-        options = [{"value": "done", "label": "Done"}, {"value": "add", "label": "Add a tool"}]
-        for row in instances:
-            options.append({"value": f"edit:{row['key']}", "label": f"Edit {row['label']}"})
-            options.append({"value": f"remove:{row['key']}", "label": f"Remove {row['label']}"})
-
-        schema: dict[Any, Any] = {
-            vol.Required("action", default="done"): SelectSelector(
-                SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN)
-            )
-        }
-        if not self._flow_is_system():
-            current = self.config_entry.options.get(CONF_PROFILE_TOOLS)
-            schema[vol.Required("use_all", default=use_all)] = bool
-            schema[
-                vol.Optional(
-                    "profile_tools",
-                    default=list(current) if current is not None else selected_default,
-                )
-            ] = SelectSelector(
-                SelectSelectorConfig(
-                    options=[{"value": row["key"], "label": row["label"]} for row in instances],
-                    multiple=True,
-                    mode=SelectSelectorMode.DROPDOWN,
-                )
-            )
-
-        description = (
-            "Shared tools are stored for every profile. "
-            "Removing a tool tears it down immediately."
-        )
-        if not self._flow_is_system():
-            description = (
-                "Add profile tools such as Mem0, or choose which enabled tools "
-                "this profile's agent can see. Built-in Home Assistant tools stay on. "
-                "The default is all enabled tools. Changes apply without a restart."
-            )
-        return self.async_show_form(
-            step_id="tools",
-            data_schema=vol.Schema(schema),
-            errors=errors,
-            description_placeholders={"info": description},
-        )
-
-    async def async_step_tool_add(self, user_input=None):
-        """Pick a tool type, then fill its schema."""
-        types = self._tool_types()
-        available = []
-        for tool in types.values():
-            if tool.shared and _system_entry(self.hass) is None:
-                continue
-            if not tool.shared and self._flow_is_system():
-                continue
-            if not tool.allow_multiple:
-                owner = _owner_entry(self.hass, self.config_entry, tool)
-                if any(record.get("type") == tool.id for record in _records(owner)):
-                    continue
-            available.append(tool)
-        available.sort(key=lambda tool: tool.name.lower())
-        if user_input is not None:
-            self._tool_add_type = user_input["tool_type"]
-            self._tool_edit_key = None
-            return await self.async_step_tool_config()
-        if not available:
-            return self.async_show_form(
-                step_id="tool_add",
-                data_schema=vol.Schema({}),
-                errors={"base": "no_tools"},
-                description_placeholders={"info": "Every available tool is already enabled."},
-            )
-        return self.async_show_form(
-            step_id="tool_add",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("tool_type"): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                {
-                                    "value": tool.id,
-                                    "label": f"{tool.name} — {tool.description}",
-                                }
-                                for tool in available
-                            ],
-                            mode=SelectSelectorMode.DROPDOWN,
-                        )
-                    )
-                }
-            ),
-            description_placeholders={"info": "Choose a tool to add. You can add another instance later when the tool allows it."},
-        )
-
-    def _find_row(self, key: str) -> dict[str, Any] | None:
-        for row in self._visible_instances():
-            if row["key"] == key:
-                return row
-        return None
-
-    async def async_step_tool_config(self, user_input=None):
-        """Create or update one tool instance from its schema."""
-        types = self._tool_types()
-        editing = self._find_row(getattr(self, "_tool_edit_key", None) or "")
-        if editing is not None:
-            tool = types[editing["type"]]
-            suggested = editing["instance_id"]
-            current = {**editing["config"], "prefix": editing["prefix"]}
-            include_identity = False
-        else:
-            tool = types[getattr(self, "_tool_add_type", "")]
-            owner = _owner_entry(self.hass, self.config_entry, tool)
-            existing_ids = {str(record.get("instance_id")) for record in _records(owner)}
-            suggested = _next_instance_id(existing_ids, tool.id)
-            current = {}
-            include_identity = True
-
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        """Add a tool instance."""
+        tool = self._tool()
+        entry = self._get_entry()
+        if not tool.allow_multiple and entry.get_subentries_of_type(tool.id):
+            return self.async_abort(reason="already_configured")
         errors: dict[str, str] = {}
         if user_input is not None:
-            instance_id = editing["instance_id"] if editing else str(user_input.get("instance_id") or "").strip().lower()
-            if include_identity and not _INSTANCE_ID.match(instance_id):
-                errors["instance_id"] = "invalid_instance_id"
-            prefix = normalize_prefix(user_input.get("prefix", current.get("prefix", "")))
-            raw_config = {
-                key: value
-                for key, value in user_input.items()
-                if key not in ("instance_id", "prefix")
+            name, prefix, config = _split_input(user_input, tool)
+            existing = {
+                sub.unique_id
+                for sub in entry.subentries.values()
+                if sub.unique_id
             }
-            try:
-                config = tool.config_schema(raw_config)
-            except vol.Invalid:
-                errors["base"] = "invalid_tool_config"
-                config = raw_config
+            instance_id = _next_instance_id(existing, tool.id, name)
+            names = _preview_names(self.hass, tool, prefix, config)
+            if any(item in _taken_names(self.hass, skip_unique_id=None) for item in names):
+                errors["prefix"] = "duplicate_tool_name"
             if not errors:
-                names = _preview_names(self.hass, tool, prefix, config)
-                taken = set()
-                for row in self._visible_instances():
-                    if editing and row["key"] == editing["key"]:
-                        continue
-                    taken.update(
-                        _preview_names(
-                            self.hass,
-                            types[row["type"]],
-                            row["prefix"],
-                            row["config"],
-                        )
-                    )
-                if any(name in taken for name in names):
-                    errors["prefix"] = "duplicate_tool_name"
-            if not errors:
-                owner = _owner_entry(self.hass, self.config_entry, tool)
-                records = _records(owner)
-                new_record = {
-                    "instance_id": instance_id,
-                    "type": tool.id,
-                    "prefix": prefix,
-                    "config": config,
-                }
-                replaced = False
-                updated = []
-                for record in records:
-                    if str(record.get("instance_id")) == instance_id:
-                        updated.append(new_record)
-                        replaced = True
-                    else:
-                        updated.append(record)
-                if not replaced:
-                    if any(str(record.get("instance_id")) == instance_id for record in records):
-                        errors["instance_id"] = "duplicate_instance"
-                    else:
-                        updated.append(new_record)
-                if not errors:
-                    await self._persist_tools(owner, updated)
-                    return await self.async_step_tools()
-
+                return self.async_create_entry(
+                    title=name,
+                    data={"prefix": prefix, **config},
+                    unique_id=instance_id,
+                )
         return self.async_show_form(
-            step_id="tool_config",
-            data_schema=flow_schema(
-                tool,
-                current,
-                include_identity=include_identity,
-                suggested_id=suggested,
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                tool_config_schema(tool),
+                self._suggested(tool, {}),
             ),
             errors=errors,
-            description_placeholders={
-                "name": tool.name,
-                "info": tool.description,
-            },
         )
 
-    async def async_step_tool_remove(self, user_input=None):
-        """Tear a tool down and drop it from tools/list."""
-        row = self._find_row(getattr(self, "_tool_remove_key", "") or "")
-        if row is None:
-            return await self.async_step_tools()
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Edit a tool instance without reloading Home Assistant."""
+        tool = self._tool()
+        subentry = self._get_reconfigure_subentry()
+        errors: dict[str, str] = {}
         if user_input is not None:
-            if user_input.get("confirm", True):
-                entry = next(
-                    (
-                        candidate
-                        for candidate in self.hass.config_entries.async_entries(DOMAIN)
-                        if candidate.entry_id == row["entry_id"]
-                    ),
-                    None,
+            name, prefix, config = _split_input(user_input, tool)
+            names = _preview_names(self.hass, tool, prefix, config)
+            taken = _taken_names(self.hass, skip_unique_id=subentry.unique_id)
+            if any(item in taken for item in names):
+                errors["prefix"] = "duplicate_tool_name"
+            if not errors:
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    subentry,
+                    title=name,
+                    data={"prefix": prefix, **config},
                 )
-                if entry is not None:
-                    records = [
-                        record
-                        for record in _records(entry)
-                        if str(record.get("instance_id")) != row["instance_id"]
-                    ]
-                    await self._persist_tools(entry, records)
-                    if not self._flow_is_system() and CONF_PROFILE_TOOLS in self.config_entry.options:
-                        selected = [
-                            key
-                            for key in self.config_entry.options.get(CONF_PROFILE_TOOLS) or []
-                            if key != row["key"]
-                        ]
-                        await self._persist_selection(False, selected)
-            return await self.async_step_tools()
+        current = {"name": subentry.title, **dict(subentry.data)}
         return self.async_show_form(
-            step_id="tool_remove",
-            data_schema=vol.Schema({vol.Required("confirm", default=True): bool}),
-            description_placeholders={"name": row["label"], "info": f"Remove {row['label']}? Its tools disappear immediately."},
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                tool_config_schema(tool, current),
+                self._suggested(tool, current),
+            ),
+            errors=errors,
         )
+
+
+@callback
+def async_get_supported_subentry_types(
+    config_entry: ConfigEntry,
+) -> dict[str, type[ConfigSubentryFlow]]:
+    """One subentry flow per tool type, only on the system entry."""
+    if config_entry.unique_id != SYSTEM_ENTRY_UNIQUE_ID:
+        return {}
+    return {tool_id: ToolSubentryFlow for tool_id in cached_tool_types()}
+
+
+def subentries_for_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert stored tool records into config-entry subentry payloads."""
+    types = cached_tool_types()
+    payloads: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for tool in tools:
+        if not isinstance(tool, dict) or not tool.get("type"):
+            continue
+        instance_id = str(tool.get("instance_id") or tool["type"])
+        if instance_id in seen:
+            continue
+        seen.add(instance_id)
+        type_id = str(tool["type"])
+        info = types.get(type_id)
+        display = info.name if info is not None else type_id
+        prefix = tool.get("prefix") or ""
+        title = tool.get("title") or (f"{display} ({prefix})" if prefix else display)
+        data = {"prefix": prefix, **dict(tool.get("config") or {})}
+        payloads.append(
+            {
+                "data": data,
+                "subentry_type": type_id,
+                "title": title,
+                "unique_id": instance_id,
+            }
+        )
+    return payloads
+
+
+def attach_subentries(hass, entry: ConfigEntry, payloads: list[dict[str, Any]]) -> None:
+    """Add subentries that are not already present. Does not reload the entry."""
+    from types import MappingProxyType
+
+    existing = {sub.unique_id for sub in entry.subentries.values() if sub.unique_id}
+    for payload in payloads:
+        if payload.get("unique_id") in existing:
+            continue
+        hass.config_entries.async_add_subentry(
+            entry,
+            ConfigSubentry(
+                data=MappingProxyType(dict(payload["data"])),
+                subentry_type=payload["subentry_type"],
+                title=payload["title"],
+                unique_id=payload.get("unique_id"),
+            ),
+        )
+        existing.add(payload.get("unique_id"))

@@ -52,16 +52,11 @@ The default MCP port is **8091**, so Assist Harness can run next to an existing 
 
 ### Tools
 
-Open the integration's options and choose **Tools**.
+On the Assist Harness integration page, the system entry lists each tool as its own item. Each tool type has an **Add** button (Add Brave Search, Add SearXNG, Add external MCP server, and so on). Open an item to reconfigure it, or delete it from the same place. Adding, changing, or deleting a tool updates the MCP `tools/list` immediately. Home Assistant does not restart.
 
-- The list shows tools that are enabled now.
-- **Add a tool** asks you to pick a type, then fills that type's own settings. Secret fields are password inputs.
-- **Edit** changes that instance.
-- **Remove** tears the instance down. Its MCP tools disappear from `tools/list` immediately. Home Assistant does not restart.
-- A tool that allows multiple instances asks for an instance id and an optional tool-name prefix (`home` becomes `home_`). Two SearXNG instances can expose `home_search` and `lab_search`.
-- On a profile, **This profile can use every enabled tool** is on by default. Turn it off to pick a subset. `discover_entities`, `perform_action`, and the other built-in tools are not in that list; they stay available.
+A tool that can be added more than once (two SearXNG servers, several external MCP servers) asks for a name and an optional tool-name prefix so the tools do not collide (`home` becomes `home_`).
 
-Shared tools (search, Read URL, external MCP servers) are stored on the system entry. Mem0 is stored on the profile, because each profile has its own URL, key, and user id.
+Open a profile and choose **Tools** to decide which of those enabled tools that profile's agent can see. The default is every enabled tool. Built-in Home Assistant tools such as `discover_entities` and `perform_action` are not in that list; they stay on.
 
 ### Built-in tool types
 
@@ -84,7 +79,8 @@ Config entries are version 2. On startup, version 1 entries are migrated in plac
 
 - `search_provider: brave`, `duckduckgo`, or `searxng` becomes that search tool plus `read_url`. An old `enable_custom_tools: true` with no provider becomes Brave plus `read_url`. `none` adds neither.
 - The Brave API key and SearXNG URL move onto those tools.
-- Per-profile `mem0_enabled`, `mem0_url`, `mem0_api_key`, and `mem0_user_id` become one `mem0_memory` tool with the same values, including a disabled switch.
+- Per-profile `mem0_enabled`, `mem0_url`, `mem0_api_key`, and `mem0_user_id` become one Mem0 subentry on the system entry with the same values, including a disabled switch.
+- Version 2 tool lists (the `tools` option) are moved into those same subentries.
 
 After migration, search names stay `search` and `read_url`, and Mem0 names stay `recall_memory` and `save_memory`.
 

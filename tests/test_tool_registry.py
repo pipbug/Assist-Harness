@@ -18,7 +18,7 @@ from custom_components.assist_harness.migration import (
     migrate_mapping,
     plan_mcp_assist_import,
 )
-from custom_components.assist_harness.tool_flow import flow_schema
+from custom_components.assist_harness.tool_flow import tool_config_schema
 from custom_components.assist_harness.tools.registry import (
     discover_tool_types,
     filter_tools_for_entry,
@@ -94,7 +94,7 @@ def test_drop_in_module_is_discovered():
 
 def test_secret_fields_render_as_passwords():
     tool = discover_tool_types()["brave"]
-    schema = flow_schema(tool, {}, include_identity=True, suggested_id="brave")
+    schema = tool_config_schema(tool, {})
     for marker, validator in schema.schema.items():
         if getattr(marker, "schema", None) == "api_key":
             assert isinstance(validator, TextSelector)
@@ -315,13 +315,16 @@ async def test_config_entry_version_migration(hass):
     )
     assert await async_migrate_entry(hass, system)
     assert await async_migrate_entry(hass, profile)
-    assert system.version == 2
-    assert {tool["type"] for tool in system.options["tools"]} == {"duckduckgo", "read_url"}
-    mem0 = profile.options["tools"][0]["config"]
+    assert system.version == 3
+    assert profile.version == 3
+    assert "tools" not in system.options
+    assert "tools" not in profile.options
+    by_type = {sub.subentry_type: sub for sub in system.subentries.values()}
+    assert set(by_type) == {"duckduckgo", "read_url", "mem0_memory"}
+    mem0 = by_type["mem0_memory"].data
     assert mem0["mem0_enabled"] is False
     assert mem0["mem0_url"] == "http://127.0.0.1:8888"
     assert mem0["mem0_user_id"] == "kira"
-    assert "mem0_enabled" not in profile.options
 
     registry = get_registry(hass)
     await registry.async_reload()
@@ -396,10 +399,15 @@ async def test_mcp_assist_import_copies_entries_and_leaves_originals(hass, monke
         DOMAIN, SYSTEM_ENTRY_UNIQUE_ID
     )
     assert new_system is not None
-    assert new_system.data["mcp_port"] == 8090
+    assert new_system.data["mcp_port"] == 8091
     assert new_system.data["allowed_ips"] == "192.168.1.0/24"
-    assert {tool["type"] for tool in new_system.options["tools"]} == {"brave", "read_url"}
-    assert next(tool for tool in new_system.options["tools"] if tool["type"] == "brave")["config"]["api_key"] == "abc"
+    by_type = {sub.subentry_type: sub for sub in new_system.subentries.values()}
+    assert set(by_type) == {"brave", "read_url", "mem0_memory"}
+    assert by_type["brave"].data["api_key"] == "abc"
+    assert by_type["mem0_memory"].data["mem0_url"] == "https://api.mem0.ai"
+    assert by_type["mem0_memory"].data["mem0_api_key"] == "tok"
+    assert by_type["mem0_memory"].data["mem0_enabled"] is True
+    assert by_type["mem0_memory"].data["mem0_user_id"] == "kira"
 
     new_profile = hass.config_entries.async_entry_for_domain_unique_id(
         DOMAIN, "assist_harness_ollama_kira"
@@ -409,9 +417,7 @@ async def test_mcp_assist_import_copies_entries_and_leaves_originals(hass, monke
     assert new_profile.data["technical_prompt"] == "use the tools"
     assert new_profile.data["model_name"] == "llama3"
     assert new_profile.data["api_key"] == "secret"
-    assert new_profile.options["tools"][0]["config"]["mem0_url"] == "https://api.mem0.ai"
-    assert new_profile.options["tools"][0]["config"]["mem0_api_key"] == "tok"
-    assert new_profile.options["tools"][0]["config"]["mem0_enabled"] is True
+    assert not new_profile.subentries
 
     # Planning itself does not touch the source objects.
     snapshot = dict(old_profile.options)

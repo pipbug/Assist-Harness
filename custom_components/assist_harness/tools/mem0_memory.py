@@ -131,12 +131,48 @@ def _settings_of(entry) -> Optional[Dict[str, str]]:
     return settings_from_config(_config_of(entry))
 
 
+def _mem0_configs(hass, entry=None) -> list[Dict[str, Any]]:
+    """Mem0 configs visible to ``entry`` (or every profile when entry is None)."""
+    configs: list[Dict[str, Any]] = []
+    if entry is not None:
+        legacy = _config_of(entry)
+        if legacy is not None:
+            configs.append(legacy)
+    try:
+        entries = hass.config_entries.async_entries(DOMAIN)
+    except Exception:
+        return configs
+    from ..const import SYSTEM_ENTRY_UNIQUE_ID
+    from .registry import profile_selection
+
+    selected = profile_selection(entry) if entry is not None else None
+    system = next((item for item in entries if item.unique_id == SYSTEM_ENTRY_UNIQUE_ID), None)
+    owners = [system] if system is not None else []
+    if system is None:
+        owners = [item for item in entries if item is not entry]
+    for owner in owners:
+        for subentry in getattr(owner, "subentries", {}).values():
+            if subentry.subentry_type != "mem0_memory":
+                continue
+            identity = subentry.unique_id or subentry.subentry_id
+            if selected is not None and identity not in selected and subentry.subentry_id not in selected:
+                continue
+            data = {key: value for key, value in dict(subentry.data).items() if key != "prefix"}
+            configs.append(data)
+    if entry is None:
+        for candidate in entries:
+            if candidate is system:
+                continue
+            legacy = _config_of(candidate)
+            if legacy is not None:
+                configs.append(legacy)
+    return configs
+
+
 def get_settings(hass, entry=None) -> Optional[Dict[str, str]]:
     """Mem0 settings of ``entry``, or of the first profile with Mem0 enabled."""
-    if entry is not None:
-        return _settings_of(entry)
-    for candidate in hass.config_entries.async_entries(DOMAIN):
-        settings = _settings_of(candidate)
+    for config in _mem0_configs(hass, entry):
+        settings = settings_from_config(config)
         if settings:
             return settings
     return None

@@ -18,6 +18,7 @@ CONF_PROFILE_TOOLS = "profile_tools"
 _PACKAGE = "custom_components.assist_harness.tools"
 # Modules in this package that are not tool types.
 _SKIP = {"base", "registry"}
+_DISCOVERED: dict[str, Tool] | None = None
 
 
 def discover_tool_types(package: str = _PACKAGE) -> dict[str, Tool]:
@@ -40,7 +41,56 @@ def discover_tool_types(package: str = _PACKAGE) -> dict[str, Tool]:
             _LOGGER.warning("Tool module %s has TOOL without an id", info.name)
             continue
         found[tool.id] = tool
+    if package == _PACKAGE:
+        global _DISCOVERED
+        _DISCOVERED = found
     return found
+
+
+def cached_tool_types() -> dict[str, Tool]:
+    """Return tool types discovered earlier, discovering now if nothing is cached.
+
+    Callers on the event loop should use ``async_ensure_tool_types`` so the
+    import work runs in an executor.
+    """
+    if _DISCOVERED is not None:
+        return _DISCOVERED
+    return discover_tool_types()
+
+
+async def async_ensure_tool_types(hass: HomeAssistant) -> dict[str, Tool]:
+    """Discover built-in tool modules once, off the event loop."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    cached = domain_data.get("tool_types")
+    if cached:
+        return cached
+    if _DISCOVERED is not None:
+        domain_data["tool_types"] = _DISCOVERED
+        return _DISCOVERED
+    found = await hass.async_add_executor_job(discover_tool_types)
+    domain_data["tool_types"] = found
+    return found
+
+
+def subentry_records(entry) -> list[dict[str, Any]]:
+    """Tool records stored as config subentries."""
+    if entry is None or not getattr(entry, "subentries", None):
+        return []
+    records: list[dict[str, Any]] = []
+    for subentry in entry.subentries.values():
+        data = dict(subentry.data)
+        prefix = data.pop("prefix", "") or ""
+        records.append(
+            {
+                "instance_id": subentry.unique_id or subentry.subentry_id,
+                "type": subentry.subentry_type,
+                "prefix": prefix,
+                "config": data,
+                "title": subentry.title,
+                "subentry_id": subentry.subentry_id,
+            }
+        )
+    return records
 
 
 def tools_of(entry) -> list[dict[str, Any]]:
@@ -90,9 +140,9 @@ def _profiles(hass: HomeAssistant) -> list:
 class ToolRegistry:
     """Live set of tool instances behind the shared MCP server."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, types: dict[str, Tool] | None = None) -> None:
         self.hass = hass
-        self.types: dict[str, Tool] = discover_tool_types()
+        self.types: dict[str, Tool] = types if types is not None else cached_tool_types()
         self.instances: dict[str, ToolInstance] = {}
         self.generation = 0
 
@@ -102,43 +152,25 @@ class ToolRegistry:
     def iter_records(self) -> Iterable[tuple[str, bool, dict[str, Any]]]:
         """Yield ``(entry_id, shared, record)`` in tools/list order.
 
-        Shared tools come from the system entry. When the system entry has
-        none (a profile was migrated before a system entry existed), the
-        first profile that stores shared tools is used instead. Per-profile
-        tools follow, in profile order.
+        Tool instances are subentries of the system entry. Options lists are
+        only a fallback for an entry that has not been migrated yet.
         """
-        shared_ids = self.shared_type_ids()
         system = _system_entry(self.hass)
-        system_shared = [
-            record
-            for record in tools_of(system)
-            if record.get("type") in shared_ids
-        ]
-        system_declares_tools = system is not None and (
-            CONF_TOOLS in system.options or CONF_TOOLS in system.data
-        )
-        if system_shared and system is not None:
-            for record in system_shared:
-                yield system.entry_id, True, record
-        elif not system_declares_tools:
-            # No system tool list yet: a profile may still hold the migrated
-            # search tools from before the system entry existed.
+        records = subentry_records(system)
+        owner = system.entry_id if system is not None else ""
+        if not records and system is not None:
+            records = tools_of(system)
+        if not records:
             for entry in _profiles(self.hass):
-                borrowed = [
-                    record
-                    for record in tools_of(entry)
-                    if record.get("type") in shared_ids
-                ]
+                borrowed = subentry_records(entry) or tools_of(entry)
                 if borrowed:
-                    for record in borrowed:
-                        yield entry.entry_id, True, record
+                    records = borrowed
+                    owner = entry.entry_id
                     break
-
-        for entry in _profiles(self.hass):
-            for record in tools_of(entry):
-                if record.get("type") in shared_ids:
-                    continue
-                yield entry.entry_id, False, record
+        for record in records:
+            tool = self.types.get(str(record.get("type")))
+            shared = True if tool is None else bool(tool.shared)
+            yield owner, shared, record
 
     async def async_reload(self) -> None:
         """Match running instances to config. Removed tools are torn down."""
@@ -327,13 +359,19 @@ class ToolRegistry:
 
 
 def get_registry(hass: HomeAssistant) -> ToolRegistry:
-    """Return the process-wide registry, creating it on first use."""
+    """Return the process-wide registry, creating it from the cached types."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     registry = domain_data.get("tool_registry")
     if registry is None:
-        registry = ToolRegistry(hass)
+        registry = ToolRegistry(hass, domain_data.get("tool_types"))
         domain_data["tool_registry"] = registry
     return registry
+
+
+async def async_get_registry(hass: HomeAssistant) -> ToolRegistry:
+    """Discover tool modules in an executor, then return the registry."""
+    await async_ensure_tool_types(hass)
+    return get_registry(hass)
 
 
 def filter_tools_for_entry(hass: HomeAssistant, entry, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -210,9 +210,9 @@ class MCPServer:
             # Optional tools come from the registry. A tool that fails to set
             # up is omitted; the built-in Home Assistant tools still start.
             try:
-                from .tools.registry import get_registry
+                from .tools.registry import async_get_registry
 
-                self.registry = get_registry(self.hass)
+                self.registry = await async_get_registry(self.hass)
                 await self.registry.async_reload()
                 _LOGGER.info(
                     "Tools ready: %s",

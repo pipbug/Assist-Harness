@@ -78,29 +78,30 @@ async def ensure_system_entry(hass: HomeAssistant) -> ConfigEntry:
                 first_profile = entry
                 break
 
+        pending_tools: list = []
         # Extract shared settings from first profile (with fallback to defaults)
         if first_profile:
             _LOGGER.info("Copying shared settings from profile: %s",
                         first_profile.data.get(CONF_PROFILE_NAME, "Unknown"))
-            from .migration import migrate_mapping, shared_type_ids
-            from .tools.registry import CONF_TOOLS
+            from .migration import migrate_mapping
+            from .tool_flow import attach_subentries, subentries_for_tools
+            from .tools.registry import CONF_TOOLS, async_ensure_tool_types
 
+            await async_ensure_tool_types(hass)
             # Re-run the legacy conversion on a copy so a profile that still
             # holds search settings (no system entry yet) contributes its tools.
             _data, migrated_options = migrate_mapping(
                 first_profile.data, first_profile.options, convert_search=True
             )
-            shared_ids = shared_type_ids()
-            shared_tools = [
-                tool
-                for tool in (migrated_options.get(CONF_TOOLS) or [])
-                if isinstance(tool, dict) and tool.get("type") in shared_ids
-            ]
+            pending_tools = list(migrated_options.get(CONF_TOOLS) or [])
+            port = first_profile.options.get(
+                CONF_MCP_PORT,
+                first_profile.data.get(CONF_MCP_PORT, DEFAULT_MCP_PORT),
+            )
+            if port == 8090:
+                port = DEFAULT_MCP_PORT
             shared_settings = {
-                CONF_MCP_PORT: first_profile.options.get(
-                    CONF_MCP_PORT,
-                    first_profile.data.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)
-                ),
+                CONF_MCP_PORT: port,
                 CONF_ALLOWED_IPS: first_profile.options.get(
                     CONF_ALLOWED_IPS,
                     first_profile.data.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
@@ -110,8 +111,6 @@ async def ensure_system_entry(hass: HomeAssistant) -> ConfigEntry:
                     first_profile.data.get(CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING)
                 ),
             }
-            if shared_tools:
-                shared_settings[CONF_TOOLS] = shared_tools
         else:
             # No profiles exist yet (shouldn't happen in normal flow), use defaults
             _LOGGER.info("No existing profiles found, using default shared settings")
@@ -134,9 +133,14 @@ async def ensure_system_entry(hass: HomeAssistant) -> ConfigEntry:
         if system_entry is None:
             raise ConfigEntryNotReady("Failed to create system entry")
 
-        _LOGGER.info("✅ System entry created successfully with settings: mcp_port=%s, tools=%s",
-                    shared_settings.get(CONF_MCP_PORT),
-                    len(shared_settings.get("tools") or []))
+        if pending_tools:
+            attach_subentries(hass, system_entry, subentries_for_tools(pending_tools))
+
+        _LOGGER.info(
+            "✅ System entry created successfully with settings: mcp_port=%s, tools=%s",
+            shared_settings.get(CONF_MCP_PORT),
+            len(system_entry.subentries),
+        )
 
     return system_entry
 
@@ -180,7 +184,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Assist Harness from a config entry."""
     # Skip setup for system entry (it only stores config, doesn't create entities)
     if entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-        _LOGGER.debug("Skipping setup for system entry (config only)")
+        from .tools.registry import async_ensure_tool_types
+
+        await async_ensure_tool_types(hass)
+        entry.async_on_unload(entry.add_update_listener(async_update_options))
+        _LOGGER.debug("System entry ready")
         return True
 
     profile_name = entry.data.get("profile_name", "Default")

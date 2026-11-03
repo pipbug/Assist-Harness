@@ -118,6 +118,30 @@
   "options": {
     "step": {
       "init": {
+        "title": "Profile",
+        "description": "Choose what to change for this profile.",
+        "menu_options": {
+          "profile": "Profile settings",
+          "profile_tools": "Tools"
+        }
+      },
+      "mcp_server": {
+        "title": "Shared MCP Server Settings",
+        "description": "⚠️ These settings are shared across ALL profiles",
+        "data": {
+          "mcp_port": "MCP Server Port",
+          "search_provider": "Web Search",
+          "brave_api_key": "Brave Search API Key",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "Additional Allowed IPs/Ranges",
+          "enable_gap_filling": "Enable Smart Entity Index",
+          "max_entities_per_discovery": "Max Entities Per Discovery (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "Address of your SearXNG instance, e.g. http://192.168.1.10:8888. JSON output must be enabled in its settings.yml (search: formats: json)."
+        }
+      },
+      "profile": {
         "title": "Profile Settings",
         "description": "{server_info}",
         "data": {
@@ -164,101 +188,21 @@
           "thinking_mode": "Controls reasoning on models that think before answering. Off is fastest for voice. Server default sends nothing. Not every server honours it (LM Studio is unreliable)."
         }
       },
-      "mcp_server": {
-        "title": "Shared MCP Server Settings",
-        "description": "⚠️ These settings are shared across ALL profiles",
-        "data": {
-          "mcp_port": "MCP Server Port",
-          "search_provider": "Web Search",
-          "brave_api_key": "Brave Search API Key",
-          "searxng_url": "SearXNG URL",
-          "allowed_ips": "Additional Allowed IPs/Ranges",
-          "enable_gap_filling": "Enable Smart Entity Index",
-          "max_entities_per_discovery": "Max Entities Per Discovery (20-500)"
-        },
-        "data_description": {
-          "searxng_url": "Address of your SearXNG instance, e.g. http://192.168.1.10:8888. JSON output must be enabled in its settings.yml (search: formats: json)."
-        }
-      },
-      "system_menu": {
-        "title": "Assist Harness",
-        "description": "Shared server settings, and the tools every profile can use.",
-        "menu_options": {
-          "mcp_server": "Server settings",
-          "tools": "Tools"
-        }
-      },
-      "profile_next": {
-        "title": "Profile",
-        "description": "Save this profile, change shared server settings, or manage tools.",
-        "menu_options": {
-          "tools": "Tools",
-          "mcp_server": "Shared server settings",
-          "save_profile": "Save profile"
-        }
-      },
-      "tools": {
+      "profile_tools": {
         "title": "Tools",
-        "description": "{info}",
+        "description": "Choose which enabled tools this profile's agent can use. Home Assistant controls such as discover_entities and perform_action always stay available.",
         "data": {
-          "action": "Action",
-          "use_all": "This profile can use every enabled tool",
-          "profile_tools": "Tools this profile's agent can see"
+          "use_all": "Use every enabled tool",
+          "profile_tools": "Tools for this profile"
         },
         "data_description": {
-          "use_all": "Turn this off to pick a subset. Built-in Home Assistant tools always stay available.",
-          "profile_tools": "Used only when 'every enabled tool' is off."
-        }
-      },
-      "tool_add": {
-        "title": "Add a tool",
-        "description": "{info}",
-        "data": {
-          "tool_type": "Tool"
-        }
-      },
-      "tool_config": {
-        "title": "Tool settings",
-        "description": "{name}\n\n{info}",
-        "data": {
-          "instance_id": "Instance id",
-          "prefix": "Tool name prefix",
-          "api_key": "API key",
-          "url": "URL",
-          "transport": "Transport",
-          "bearer_token": "Bearer token",
-          "headers": "Extra headers",
-          "mem0_enabled": "Mem0 long-term memory",
-          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
-          "mem0_api_key": "Mem0 API key",
-          "mem0_user_id": "Mem0 user ID"
-        },
-        "data_description": {
-          "prefix": "Optional. Prefixed to every tool name from this instance so two instances do not collide. Example: home_",
-          "headers": "Optional. One 'Name: value' header per line.",
-          "transport": "streamable_http (default) or sse.",
-          "url": "For an external MCP server, the streamable HTTP or SSE endpoint."
-        }
-      },
-      "tool_remove": {
-        "title": "Remove tool",
-        "description": "{info}",
-        "data": {
-          "confirm": "Remove this tool"
+          "use_all": "On by default. Turn this off to pick a subset of the tools added on the integration page.",
+          "profile_tools": "Only used when 'Use every enabled tool' is off."
         }
       }
     },
-    "abort": {
-      "tools_updated": "Tools updated."
-    },
-    "error": {
-      "invalid_tool_config": "Check the tool settings and try again.",
-      "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix.",
-      "duplicate_instance": "An instance with that id already exists.",
-      "invalid_instance_id": "Use a short id: a letter, then letters, numbers, or underscores.",
-      "no_tools": "No more tool types can be added.",
-      "unknown_tool": "That tool is no longer available."
-    }
+    "abort": {},
+    "error": {}
   },
   "entity": {
     "conversation": {
@@ -275,6 +219,276 @@
         "low": "Low",
         "medium": "Medium",
         "high": "High"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
       }
     }
   }

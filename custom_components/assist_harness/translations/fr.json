@@ -16,11 +16,19 @@
           "lmstudio_url": "URL du serveur",
           "api_key": "Cle API",
           "mcp_port": "Port du serveur MCP",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
           "hermes_url": "URL du serveur Hermes"
         },
         "data_description": {
           "api_key": "Obligatoire pour les fournisseurs cloud. Facultative pour les serveurs locaux (LM Studio, llama.cpp, Ollama, vLLM) : laissez vide sauf si le serveur exige une clé."
         }
+      },
+      "openclaw_pairing": {
+        "title": "OpenClaw Device Pairing",
+        "description": "Your device needs to be approved on the OpenClaw server.\n\nApprove it by running `openclaw devices approve` or using the OpenClaw Control UI, then click Submit.\n\nDevice ID: {device_id}"
       },
       "model": {
         "title": "Modele et instructions",
@@ -43,12 +51,12 @@
           "response_mode": "Mode de reponse",
           "follow_up_phrases": "Phrases de suivi",
           "end_words": "Mots de fin de conversation",
+          "clean_responses": "Nettoyer les réponses pour la sortie vocale",
           "timeout": "Delai de reponse",
           "thinking_mode": "Réflexion",
           "debug_mode": "Mode debogage",
           "ollama_keep_alive": "Maintenir Ollama actif",
           "ollama_num_ctx": "Fenetre de contexte Ollama",
-          "clean_responses": "Nettoyer les réponses pour la sortie vocale",
           "openclaw_agent_id": "ID de l'agent",
           "openclaw_session_mode": "Mode de session",
           "openclaw_session_key": "Clé de session / ID de session",
@@ -79,6 +87,13 @@
         "data_description": {
           "searxng_url": "Adresse de votre instance SearXNG, par ex. http://192.168.1.10:8888. La sortie JSON doit être activée dans son settings.yml (search: formats: json)."
         }
+      },
+      "import_offer": {
+        "title": "Import from MCP Assist",
+        "description": "Found {count} MCP Assist entr(ies). Copy their system settings and every profile, including prompts, model, keys, and Mem0, into Assist Harness? The original integration is not modified or removed.",
+        "data": {
+          "import_existing": "Import existing MCP Assist configuration"
+        }
       }
     },
     "error": {
@@ -91,10 +106,13 @@
       "invalid_json": "Format JSON invalide. Veuillez verifier la configuration de vos serveurs MCP.",
       "invalid_api_key": "Cle API invalide. Veuillez verifier et reessayer.",
       "auth_failed": "Echec de l'authentification. Veuillez verifier votre cle API.",
-      "unknown": "Une erreur inconnue s'est produite."
+      "unknown": "Une erreur inconnue s'est produite.",
+      "openclaw_not_paired": "Device not yet approved on the OpenClaw server. Please approve it and try again.",
+      "openclaw_connection_failed": "Could not connect to the OpenClaw gateway. Check the host, port, and token."
     },
     "abort": {
-      "already_configured": "Un profil avec ce nom existe deja. Veuillez choisir un nom different."
+      "already_configured": "Un profil avec ce nom existe deja. Veuillez choisir un nom different.",
+      "import_success": "Imported your MCP Assist profiles into Assist Harness. The original entries were left unchanged."
     }
   },
   "options": {
@@ -102,40 +120,9 @@
       "init": {
         "title": "Parametres du profil",
         "description": "{server_info}",
-        "data": {
-          "profile_name": "Nom du profil",
-          "lmstudio_url": "URL du serveur",
-          "api_key": "Cle API",
-          "model_name": "Nom du modele",
-          "system_prompt": "Instructions systeme",
-          "technical_prompt": "Instructions techniques",
-          "temperature": "Temperature",
-          "max_tokens": "Tokens de reponse maximum",
-          "max_history": "Messages d'historique maximum",
-          "max_iterations": "Iterations d'outils maximum",
-          "control_home_assistant": "Controler Home Assistant",
-          "response_mode": "Mode de reponse",
-          "follow_up_phrases": "Phrases de suivi",
-          "end_words": "Mots de fin de conversation",
-          "timeout": "Delai de reponse",
-          "thinking_mode": "Réflexion",
-          "debug_mode": "Mode debogage",
-          "ollama_keep_alive": "Maintenir Ollama actif",
-          "ollama_num_ctx": "Fenetre de contexte Ollama",
-          "clean_responses": "Nettoyer les réponses pour la sortie vocale",
-          "openclaw_agent_id": "ID de l'agent",
-          "openclaw_session_mode": "Mode de session",
-          "openclaw_session_key": "Clé de session / ID de session",
-          "hermes_url": "URL du serveur Hermes",
-          "hermes_session_key": "Clé de session mémoire"
-        },
-        "data_description": {
-          "openclaw_session_key": "Utilisée uniquement lorsque le Mode de session est 'Fixed'. Saisissez une clé courte comme 'main' ou un ID de session complet comme agent:main:main.",
-          "hermes_session_key": "Clé stable délimitant la mémoire à long terme de Hermes pour ce profil.",
-          "openclaw_agent_id": "L'agent OpenClaw qui répond aux requêtes de ce profil. Il doit correspondre à un agent configuré dans OpenClaw. La valeur par défaut est 'main'.",
-          "openclaw_session_mode": "'Per conversation' donne à chaque conversation Home Assistant sa propre session OpenClaw, où restent les questions de suivi. 'Fixed' envoie toutes les requêtes à l'unique session définie dans Clé de session.",
-          "api_key": "Obligatoire pour les fournisseurs cloud. Facultative pour les serveurs locaux (LM Studio, llama.cpp, Ollama, vLLM) : laissez vide sauf si le serveur exige une clé.",
-          "thinking_mode": "Contrôle le raisonnement des modèles qui réfléchissent avant de répondre. Désactivé est le plus rapide pour la voix. Défaut du serveur n'envoie rien. Tous les serveurs ne le respectent pas (peu fiable avec LM Studio)."
+        "menu_options": {
+          "profile": "Profile settings",
+          "profile_tools": "Tools"
         }
       },
       "mcp_server": {
@@ -153,8 +140,69 @@
         "data_description": {
           "searxng_url": "Adresse de votre instance SearXNG, par ex. http://192.168.1.10:8888. La sortie JSON doit être activée dans son settings.yml (search: formats: json)."
         }
+      },
+      "profile": {
+        "title": "Parametres du profil",
+        "description": "{server_info}",
+        "data": {
+          "profile_name": "Nom du profil",
+          "lmstudio_url": "URL du serveur",
+          "api_key": "Cle API",
+          "model_name": "Nom du modele",
+          "system_prompt": "Instructions systeme",
+          "technical_prompt": "Instructions techniques",
+          "temperature": "Temperature",
+          "max_tokens": "Tokens de reponse maximum",
+          "max_history": "Messages d'historique maximum",
+          "max_iterations": "Iterations d'outils maximum",
+          "control_home_assistant": "Controler Home Assistant",
+          "response_mode": "Mode de reponse",
+          "follow_up_phrases": "Phrases de suivi",
+          "end_words": "Mots de fin de conversation",
+          "clean_responses": "Nettoyer les réponses pour la sortie vocale",
+          "timeout": "Delai de reponse",
+          "thinking_mode": "Réflexion",
+          "debug_mode": "Mode debogage",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "ollama_keep_alive": "Maintenir Ollama actif",
+          "ollama_num_ctx": "Fenetre de contexte Ollama",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "openclaw_agent_id": "ID de l'agent",
+          "openclaw_session_mode": "Mode de session",
+          "openclaw_session_key": "Clé de session / ID de session",
+          "hermes_url": "URL du serveur Hermes",
+          "hermes_session_key": "Clé de session mémoire"
+        },
+        "data_description": {
+          "openclaw_session_key": "Utilisée uniquement lorsque le Mode de session est 'Fixed'. Saisissez une clé courte comme 'main' ou un ID de session complet comme agent:main:main.",
+          "hermes_session_key": "Clé stable délimitant la mémoire à long terme de Hermes pour ce profil.",
+          "openclaw_agent_id": "L'agent OpenClaw qui répond aux requêtes de ce profil. Il doit correspondre à un agent configuré dans OpenClaw. La valeur par défaut est 'main'.",
+          "openclaw_session_mode": "'Per conversation' donne à chaque conversation Home Assistant sa propre session OpenClaw, où restent les questions de suivi. 'Fixed' envoie toutes les requêtes à l'unique session définie dans Clé de session.",
+          "api_key": "Obligatoire pour les fournisseurs cloud. Facultative pour les serveurs locaux (LM Studio, llama.cpp, Ollama, vLLM) : laissez vide sauf si le serveur exige une clé.",
+          "thinking_mode": "Contrôle le raisonnement des modèles qui réfléchissent avant de répondre. Désactivé est le plus rapide pour la voix. Défaut du serveur n'envoie rien. Tous les serveurs ne le respectent pas (peu fiable avec LM Studio)."
+        }
+      },
+      "profile_tools": {
+        "title": "Tools",
+        "description": "Choose which enabled tools this profile's agent can use. Home Assistant controls such as discover_entities and perform_action always stay available.",
+        "data": {
+          "use_all": "Use every enabled tool",
+          "profile_tools": "Tools for this profile"
+        },
+        "data_description": {
+          "use_all": "On by default. Turn this off to pick a subset of the tools added on the integration page.",
+          "profile_tools": "Only used when 'Use every enabled tool' is off."
+        }
       }
-    }
+    },
+    "abort": {},
+    "error": {}
   },
   "entity": {
     "conversation": {
@@ -171,6 +219,276 @@
         "low": "Faible",
         "medium": "Moyen",
         "high": "Élevé"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
       }
     }
   }

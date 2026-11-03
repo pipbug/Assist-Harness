@@ -25,7 +25,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .localization import get_language_instruction, get_follow_up_phrases, get_end_words
-from .tool_flow import ToolFlowMixin
+from .tool_flow import async_get_supported_subentry_types
 
 from .const import (
     DOMAIN,
@@ -523,10 +523,10 @@ def _openclaw_session_schema(
     }
 
 
-class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Assist Harness."""
 
-    VERSION = 2
+    VERSION = 3
     MINOR_VERSION = 1
 
     def __init__(self) -> None:
@@ -1299,15 +1299,21 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data=data,
         )
 
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(cls, config_entry):
+        """Tool instances are subentries of the system entry."""
+        return async_get_supported_subentry_types(config_entry)
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         """Get options flow for this handler."""
-        return MCPAssistOptionsFlow()
+        return AssistHarnessOptionsFlow()
 
 
-class MCPAssistOptionsFlow(ToolFlowMixin, config_entries.OptionsFlow):
-    """Handle options flow for Assist Harness integration."""
+class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Assist Harness."""
 
     def __init__(self) -> None:
         """Initialize options flow."""
@@ -1346,25 +1352,69 @@ class MCPAssistOptionsFlow(ToolFlowMixin, config_entries.OptionsFlow):
             )
         return self.async_create_entry(title="", data=merged)
 
-    async def async_step_profile_next(self, user_input=None):
-        """Choose tools, shared server settings, or save the profile."""
+    async def async_step_init(self, user_input=None):
+        """Open server settings, or the profile menu."""
+        if self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            return await self.async_step_mcp_server()
         return self.async_show_menu(
-            step_id="profile_next",
-            menu_options=["tools", "mcp_server", "save_profile"],
+            step_id="init",
+            menu_options=["profile", "profile_tools"],
         )
 
-    async def async_step_save_profile(self, user_input=None):
-        """Persist the profile form."""
-        return self._finish_profile()
+    async def async_step_profile_tools(self, user_input=None):
+        """Choose which enabled tools this profile's agent can see."""
+        from homeassistant.helpers.selector import (
+            BooleanSelector,
+            SelectSelector,
+            SelectSelectorConfig,
+            SelectSelectorMode,
+        )
 
-    async def async_step_init(self, user_input=None):
-        """Manage the options."""
-        if self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-            return self.async_show_menu(
-                step_id="system_menu",
-                menu_options=["mcp_server", "tools"],
+        system = None
+        for candidate in self.hass.config_entries.async_entries(DOMAIN):
+            if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                system = candidate
+                break
+        choices = []
+        if system is not None:
+            for subentry in system.subentries.values():
+                value = subentry.unique_id or subentry.subentry_id
+                choices.append({"value": value, "label": subentry.title})
+        current = self.config_entry.options.get("profile_tools")
+        use_all_default = "profile_tools" not in self.config_entry.options
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            merged = dict(self.config_entry.options)
+            if user_input.get("use_all", True):
+                merged.pop("profile_tools", None)
+            else:
+                merged["profile_tools"] = list(user_input.get("profile_tools") or [])
+            self.hass.data.setdefault(DOMAIN, {})["tools_only_update"] = True
+            return self.async_create_entry(title="", data=merged)
+        schema: dict[Any, Any] = {
+            vol.Required("use_all", default=use_all_default): BooleanSelector(),
+        }
+        if choices:
+            schema[
+                vol.Optional(
+                    "profile_tools",
+                    default=list(current) if isinstance(current, list) else [item["value"] for item in choices],
+                )
+            ] = SelectSelector(
+                SelectSelectorConfig(
+                    options=choices,
+                    multiple=True,
+                    mode=SelectSelectorMode.LIST,
+                )
             )
+        return self.async_show_form(
+            step_id="profile_tools",
+            data_schema=vol.Schema(schema),
+            errors=errors,
+        )
 
+    async def async_step_profile(self, user_input=None):
+        """Edit this profile's model, prompts, and conversation settings."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -1406,7 +1456,7 @@ class MCPAssistOptionsFlow(ToolFlowMixin, config_entries.OptionsFlow):
 
                 # Store profile settings, then choose tools or server settings
                 self.profile_options = user_input
-                return await self.async_step_profile_next()
+                return self._finish_profile()
 
         # Get current values from options, then data, then defaults
         options = self.config_entry.options
@@ -1879,7 +1929,7 @@ class MCPAssistOptionsFlow(ToolFlowMixin, config_entries.OptionsFlow):
             }
 
         return self.async_show_form(
-            step_id="init",
+            step_id="profile",
             data_schema=options_schema,
             errors=errors,
             description_placeholders=description_placeholders,
