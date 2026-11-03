@@ -1,483 +1,161 @@
-# MCP Assist for Home Assistant
+# Assist Harness for Home Assistant
 
-A Home Assistant conversation agent that uses MCP (Model Context Protocol) for efficient entity discovery, achieving **95% token reduction** compared to traditional methods. Works with LM Studio, llama.cpp, Ollama, vLLM, OpenAI (and OpenAI-compatible services), Google Gemini, Anthropic Claude, and OpenRouter, and can hand conversations to an OpenClaw or Hermes Agent gateway.
+Assist Harness is a Home Assistant conversation agent. It runs an MCP server on Home Assistant so the model discovers and controls entities with tools instead of receiving the whole entity list on every turn. It works with LM Studio, llama.cpp, Ollama, vLLM, OpenAI (and OpenAI-compatible services), Google Gemini, Anthropic Claude, and OpenRouter, and it can hand a turn to an OpenClaw or Hermes Agent gateway.
 
-## Key Features
+Assist Harness began as a fork of [mike-nott/mcp-assist](https://github.com/mike-nott/mcp-assist) (MIT).
 
-- ✅ **95% Token Reduction**: Uses MCP tools for dynamic entity discovery instead of sending all entities
-- ✅ **No Entity Dumps**: Never sends 12,000+ token entity lists to the LLM
-- ✅ **Smart Entity Index**: Pre-generated system structure index (~400-800 tokens) for context-aware queries
-- ✅ **Multi-Platform Support**: Works with LM Studio, llama.cpp, Ollama, vLLM, OpenAI, Google Gemini, Anthropic Claude, and OpenRouter
-- ✅ **Agent Gateways**: Send voice requests to an [OpenClaw](#openclaw) agent or Hermes Agent (experimental)
-- ✅ **Multilingual Support**: 21 languages with localized UI, system prompts, and speech detection
-- ✅ **Multi-turn Conversations**: Maintains conversation context and history
-- ✅ **Dynamic Discovery**: Finds entities by area, type, device_class, state, or name on-demand
-- ✅ **Thinking Control**: Turn reasoning off (or set its level) per profile for faster voice replies
-- ✅ **Web Search Tools**: Optional DuckDuckGo, Brave Search, or SearXNG integration for current information
-- ✅ **Works with 1000+ Entities**: Efficient even with large Home Assistant installations
-- ✅ **Multi-Profile Support**: Run multiple conversation agents with different models
+Optional tools are modules. Add one by dropping a file into `custom_components/assist_harness/tools/`. The options flow picks it up with no edit to the loader, `const.py`, or `config_flow.py`.
 
-## The Problem MCP Assist Solves
+## Features
 
-Traditional voice assistants send your **entire entity list** (lights, switches, sensors, etc.) to the LLM with every request. For a typical home with 200+ devices, this means:
-- **12,000+ tokens** sent every time
-- Expensive API costs (cloud LLMs)
-- Slow response times
-- Context window limitations
-- Poor performance with large homes
-
-## How MCP Assist Works
-
-Instead of dumping all entities, MCP Assist:
-
-1. **Starts an MCP Server** on Home Assistant that exposes entity discovery tools
-2. **Your LLM connects** to the MCP server and gets access to these tools:
-   - `get_index` - Get system structure index (areas, domains, device_classes, people, etc.)
-   - `discover_entities` - Find entities by type, area, domain, device_class, or state
-   - `get_entity_details` - Get current state and attributes
-   - `get_entity_history` - Get recent state changes
-   - `perform_action` - Control devices (only entities exposed to Assist)
-   - `run_script` - Execute scripts and return response data
-   - `run_automation` - Trigger automations manually
-   - `list_areas` - List all areas in your home
-   - `list_domains` - List all entity types
-   - `set_conversation_state` - Smart follow-up handling
-   - `search` / `read_url` - Web search and page reading (when web search is enabled)
-3. **LLM uses the index for smart queries** - Understands what exists without full context dump
-4. **LLM discovers on-demand** - Only fetches the entities it needs for each request
-5. **Token usage drops** from 12,000+ to ~400 tokens per request
-
-## Token Usage Comparison
-
-| Method | Token Usage | Description |
-|--------|-------------|-------------|
-| **Traditional** | 12,000+ tokens | Sends all entity states |
-| **MCP Assist** | ~400 tokens | Uses MCP tools for discovery |
-| **Reduction** | **95%** | Massive efficiency gain |
-
-## Smart Entity Index (v0.5.0+)
-
-The Smart Entity Index provides a lightweight (~400-800 tokens) snapshot of your Home Assistant system structure, enabling context-aware queries without full entity dumps. The index includes areas, domains, device classes, people, calendars, zones, automations, and scripts. For entities without standardized device_class attributes (like custom integrations), LLM-powered gap-filling automatically infers semantic categories from naming patterns. This results in faster, more accurate queries that use ~95% fewer tokens compared to traditional entity dumps.
-
-## Multilingual Support (v0.12.0+)
-
-MCP Assist supports **21 languages** with localized configuration interfaces, language-aware system prompts, and region-specific speech detection patterns. The integration automatically detects your Home Assistant system language and provides appropriate defaults for system prompts, follow-up phrases, and end conversation words. Supported languages include: Arabic, Chinese (Simplified), Czech, Danish, Dutch, Finnish, Filipino, French, German, Greek, Hindi, Italian, Japanese, Korean, Norwegian, Polish, Portuguese, Russian, Spanish, Swedish, and Turkish.
+- MCP tools for entity discovery, state, history, scripts, and automations, so a large home does not dump thousands of entities into the prompt
+- Smart entity index for areas, domains, device classes, floors, and labels
+- Several profiles, each with its own model, prompts, and choice of tools
+- Optional tools you can add and remove while Home Assistant is running: Brave, DuckDuckGo, SearXNG, Read URL, Mem0, and external MCP servers
+- More than one instance of the same tool when that is useful (two SearXNG servers, several external MCP servers), with a name prefix so their tools do not collide
+- Per profile, choose which enabled tools that profile's agent sees. Built-in Home Assistant tools stay on
+- Thinking control, multilingual prompts, and voice-oriented response cleanup
 
 ## Requirements
 
-- Home Assistant 2024.1+
+- Home Assistant 2024.1 or newer
 - One of:
-  - **Local LLMs**: LM Studio v0.3.17+, llama.cpp, Ollama, or vLLM
-  - **Cloud LLMs**: OpenAI (or an OpenAI-compatible service), Google Gemini, Anthropic Claude, or OpenRouter (API key required)
-  - **Agent gateways**: OpenClaw (protocol 4) or Hermes Agent
+  - Local: LM Studio, llama.cpp, Ollama, or vLLM
+  - Cloud: OpenAI (or a compatible endpoint), Gemini, Claude, or OpenRouter
+  - Agent gateway: OpenClaw or Hermes Agent
 - Python 3.11+
 
 ## Installation
 
-### Add to HACS
+### HACS
 
-[![Open your Home Assistant instance and add this repository to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mike-nott&repository=mcp-assist&category=integration)
+Add `https://github.com/pipbug/assist-harness` as a custom repository (category: Integration), install **Assist Harness**, and restart Home Assistant.
 
-### Option A: HACS (Recommended)
-1. Click the badge above to add this repository to HACS, or manually add it as a custom repository
-2. Install "MCP Assist" from HACS
-3. Restart Home Assistant
+### Manual
 
-### Option B: Manual Installation
-1. Copy the `custom_components/mcp_assist` folder to your Home Assistant `custom_components` directory
-2. Restart Home Assistant
+Copy `custom_components/assist_harness` into your Home Assistant `custom_components` directory and restart.
+
+The default MCP port is **8091**, so Assist Harness can run next to an existing MCP Assist install on 8090.
 
 ## Configuration
 
-### 1. Add the Integration
+1. **Settings → Devices & services → Add integration → Assist Harness**
+2. If config entries for the old `mcp_assist` domain exist and Assist Harness has none yet, the first step offers to import them. Import copies the system entry and every profile (prompts, model, keys, Mem0). It does not modify or delete the MCP Assist entries.
+3. Create a profile: name, server type, URL or API key, model, prompts, and advanced settings.
+4. Shared server settings (port, allowed IPs, entity index) apply to every profile. Changing the port needs a restart. Tools do not.
 
-1. Go to **Settings** → **Devices & Services** → **Add Integration**
-2. Search for "MCP Assist" and select it
+### Tools
 
-### 2. Setup Flow
+Open the integration's options and choose **Tools**.
 
-**Step 1 - Profile & Server Type:**
-- Profile Name: Give your assistant a name (e.g., "Living Room Assistant")
-- Server Type: Choose your LLM provider
-  - **LM Studio** - Local, free, runs on your machine
-  - **llama.cpp** - Local, free, official llama.cpp server
-  - **Ollama** - Local, free, command-line based
-  - **vLLM** - Local, free, high-throughput inference server
-  - **OpenAI** - Cloud, paid, GPT-5 series (or any OpenAI-compatible service via a custom URL)
-  - **Google Gemini** - Cloud, paid/free tier
-  - **Anthropic Claude** - Cloud, paid
-  - **OpenRouter** - Cloud, multi-model gateway with access to 200+ models
-  - **OpenClaw** - Hands each request to an OpenClaw agent (see [OpenClaw](#openclaw))
-  - **Hermes Agent** - Hands each request to a Hermes Agent server (experimental)
+- The list shows tools that are enabled now.
+- **Add a tool** asks you to pick a type, then fills that type's own settings. Secret fields are password inputs.
+- **Edit** changes that instance.
+- **Remove** tears the instance down. Its MCP tools disappear from `tools/list` immediately. Home Assistant does not restart.
+- A tool that allows multiple instances asks for an instance id and an optional tool-name prefix (`home` becomes `home_`). Two SearXNG instances can expose `home_search` and `lab_search`.
+- On a profile, **This profile can use every enabled tool** is on by default. Turn it off to pick a subset. `discover_entities`, `perform_action`, and the other built-in tools are not in that list; they stay available.
 
-**Step 2 - Server Configuration:**
+Shared tools (search, Read URL, external MCP servers) are stored on the system entry. Mem0 is stored on the profile, because each profile has its own URL, key, and user id.
 
-*For Local Servers (LM Studio / llama.cpp / Ollama / vLLM):*
-- Server URL: Where your LLM server is running
-  - LM Studio: `http://localhost:1234` (default)
-  - llama.cpp: `http://localhost:8080` (default)
-  - Ollama: `http://localhost:11434` (default)
-  - vLLM: `http://localhost:8000` (default)
-- API Key (optional): Only if your server requires one (e.g. LM Studio authentication, vLLM `--api-key`)
+### Built-in tool types
 
-*For Cloud Providers (OpenAI / Gemini / Anthropic / OpenRouter):*
-- API Key: Your provider API key
-- OpenAI also lets you change the URL to use an OpenAI-compatible service (enter it without `/v1`)
+| Id | What it adds | Config |
+| --- | --- | --- |
+| `brave` | `search` via the Brave Search API | API key |
+| `duckduckgo` | `search` via DuckDuckGo | none |
+| `searxng` | `search` via your SearXNG server | URL. JSON output must be enabled (`search.formats` includes `json`) |
+| `read_url` | `read_url` fetches a page and returns text. It is its own tool, not tied to search | none |
+| `mem0_memory` | `recall_memory` and `save_memory`, plus a background save of each finished turn | enable, URL, API key, user id |
+| `external_mcp` | Proxies another MCP server's tools | URL, transport (`streamable_http` or `sse`), optional bearer token, optional extra headers, and the instance prefix |
 
-*For OpenClaw:*
-- Gateway host, port (default: `18789`), token, and SSL
-- On first connection, approve the device on the OpenClaw server (`openclaw devices approve` or the Control UI), then click Submit
+An external server that is down is skipped: its tools are left off `tools/list` and the rest of the server keeps working. The next `tools/list` tries to reconnect.
 
-*For Hermes Agent:*
-- Server URL (default: `http://localhost:8642`) and API key
+Mem0 talks to a self-hosted server (`X-API-Key`, `/memories`, `/search`) or to the hosted platform when the URL is `https://api.mem0.ai` (`Authorization: Token`, `/v3/memories/...`). The turn save runs in the background and is skipped when `save_memory` already ran in that turn. A Mem0 outage logs a warning and does not break the reply.
 
-**Step 3 - Model & Prompts:**
-- Model Name: Select from auto-loaded models or enter manually
-- System Prompt: Customize the assistant's personality
-- Technical Instructions: Advanced prompt for tool usage (pre-configured)
+### Upgrading an Assist Harness entry
 
-**Step 4 - Advanced Settings:**
-- Temperature: Response randomness (0.0-1.0)
-- Max Response Tokens: Maximum length of responses
-- Response Mode: None / Smart / Always (conversation continuation behavior)
-- Follow-up Phrases: Configurable phrases for pattern detection (default: "anything else, would you, can i", etc.)
-- End Conversation Words: Words/phrases that end conversations (default: "bye, thanks, stop", etc.)
-- Control Home Assistant: Enable/disable device control
-- Max Tool Iterations: How many tool calls allowed per request
-- Clean Responses for Voice Output: Strip markdown and emojis, and speak symbols as words in the reply's language
-- Timeout: How long to wait for the LLM
-- **Thinking**: Server default / Off / Low / Medium / High. Off is fastest for voice. Server default sends nothing. Supported for Ollama, vLLM, llama.cpp, LM Studio (unreliable), OpenAI, Gemini, OpenRouter, and OpenClaw
-- Debug Mode: Extra logging for troubleshooting
-- **Ollama Keep Alive** (Ollama only): Control how long models stay loaded in memory
-  - `-1` = Keep loaded indefinitely
-  - `0` = Unload immediately after response
-  - `"5m"` = Keep for 5 minutes (default)
-  - Duration strings like `"24h"`, `"168h"` also supported
-- **Ollama Context Window** (Ollama only): Custom context window size (0 = use model default)
+Config entries are version 2. On startup, version 1 entries are migrated in place:
 
-**Step 5 - Shared MCP Server Settings (first profile only):**
-- MCP Server Port (default: 8090), allowed IPs, web search provider, and Smart Entity Index gap-filling. See [Shared vs Per-Profile Settings](#shared-vs-per-profile-settings).
+- `search_provider: brave`, `duckduckgo`, or `searxng` becomes that search tool plus `read_url`. An old `enable_custom_tools: true` with no provider becomes Brave plus `read_url`. `none` adds neither.
+- The Brave API key and SearXNG URL move onto those tools.
+- Per-profile `mem0_enabled`, `mem0_url`, `mem0_api_key`, and `mem0_user_id` become one `mem0_memory` tool with the same values, including a disabled switch.
 
-### 3. Set as Voice Assistant
+After migration, search names stay `search` and `read_url`, and Mem0 names stay `recall_memory` and `save_memory`.
 
-1. In Home Assistant, go to **Settings** → **Voice Assistants**
-2. Set your preferred assistant to your MCP Assist profile name
-3. Test with commands!
+## Writing a tool
 
-## Usage Examples
+Create `custom_components/assist_harness/tools/<id>.py`. The registry imports every module in that folder that defines `TOOL` (names starting with `_` are ignored).
 
-### Basic Commands
-- "Turn on the kitchen lights"
-- "Turn off all the lights in the bedroom"
-- "What's the temperature in the living room?"
+```python
+from __future__ import annotations
 
-### Multi-Turn Conversations
-- **User**: "What lights are on?"
-- **Assistant**: "The kitchen and living room lights are on."
-- **User**: "Turn off the kitchen one"
-- **Assistant**: "I've turned off the kitchen light."
+import voluptuous as vol
 
-### Complex Query Example
+from .base import Tool, apply_prefix, strip_prefix
 
-**User**: "Do we have a leak?"
+class HelloTool(Tool):
+    id = "hello"
+    name = "Hello"
+    description = "A tiny example tool."
+    shared = True              # False stores config on each profile
+    allow_multiple = True      # False allows one instance per owner
+    secrets = frozenset({"token"})  # rendered as password fields
+    config_schema = vol.Schema({
+        vol.Optional("token", default=""): str,
+        vol.Optional("greeting", default="Hello"): str,
+    })
 
-**Behind the scenes:**
-```
-1. LLM calls get_index → Sees moisture sensors and water flow monitors exist in system
-2. LLM calls discover_entities(device_class="moisture")
-   → Returns: binary_sensor.bathroom_leak, binary_sensor.kitchen_sink_leak, binary_sensor.laundry_leak
-3. LLM calls discover_entities(name_contains="water flow")
-   → Returns: sensor.water_flow_rate
-4. LLM calls get_entity_details for each sensor
-   → bathroom leak: "off", kitchen leak: "off", laundry leak: "on", water flow: "2.5 gpm"
-5. LLM synthesizes response
+    async def async_setup(self, hass, instance) -> None:
+        instance.runtime = {
+            "token": instance.config.get("token") or "",
+            "greeting": instance.config.get("greeting") or "Hello",
+        }
+
+    async def async_teardown(self, hass, instance) -> None:
+        instance.runtime = None
+
+    def definitions(self, hass, instance):
+        return apply_prefix(instance, [{
+            "name": "hello",
+            "description": "Say hello.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            },
+        }])
+
+    async def async_call(self, hass, instance, tool_name, arguments):
+        name = strip_prefix(instance, tool_name)
+        if name != "hello":
+            raise ValueError(name)
+        who = arguments.get("name") or "there"
+        greeting = instance.runtime["greeting"]
+        return {"content": [{"type": "text", "text": f"{greeting}, {who}."}]}
+
+TOOL = HelloTool()
 ```
 
-**Assistant**: "Yes, the laundry room leak sensor is detecting water and water is flowing at 2.5 gallons per minute. The bathroom and kitchen sensors are dry."
+`async_setup` runs when the instance is added or its config changes. `async_teardown` runs on remove and on shutdown. If a tool's definitions come from the network, implement `async_definitions` instead of `definitions`. Return an empty list when the remote side is down; the registry calls it again on the next `tools/list`.
 
-**Follow-up User**: "Turn off the water main"
+Restart Home Assistant once after you add the file so the module is imported. After that, add and remove instances from the Tools menu without another restart.
 
-**Behind the scenes:**
+## Exposing entities
+
+The control tools only act on entities exposed to Assist.
+
+1. **Settings → Voice assistants → Expose**
+2. Expose the entities this profile should control
+
+## Development
+
+```bash
+python -m compileall custom_components/assist_harness tests
+python -m pytest
 ```
-1. LLM calls discover_entities(name_contains="water main")
-   → Returns: switch.water_main_shutoff
-2. LLM calls perform_action(entity_id="switch.water_main_shutoff", action="turn_off")
-   → Success
-```
 
-**Assistant**: "I've shut off the main water valve."
-
-### Web Search (if enabled)
-- "What's the weather forecast for tomorrow?"
-- "Search for the latest Home Assistant updates"
-- "What time does the store close?"
-
-## OpenClaw
-
-With the **OpenClaw** server type, MCP Assist sends each voice request to an agent on your OpenClaw gateway, which answers using its own tools and memory. Settings (Configure on the profile):
-
-- **Agent ID**: Which OpenClaw agent answers (default: `main`). Must match an agent configured in OpenClaw.
-- **Session Mode**:
-  - **Per conversation** (recommended): each Home Assistant conversation gets its own session, `agent:<agent id>:ha-<conversation_id>`. Follow-ups stay in it, and rooms and people don't share one growing history.
-  - **Fixed**: every request goes to the session in **Session Key** (e.g. `main` or `agent:main:main`). Profiles created before v0.18.0 stay on Fixed until you switch them.
-- **System Prompt** (optional): sent with every request as OpenClaw's `extraSystemPrompt`, e.g. to set a persona. Leave blank to use the agent's own prompts.
-- **Thinking**: sent as OpenClaw's thinking level.
-
-When Home Assistant knows the satellite's area, the message is sent as `[Room: Kitchen] turn the lights on`, and `Speaking from: Kitchen` is added to the system prompt. Assign each voice satellite to an area (Settings → Devices → the satellite → Area) so this works. Otherwise the user's words are sent unchanged. Enable **Clean Responses for Voice Output** if the agent's replies contain markdown.
-
-## Configuration Options
-
-### Profile Settings
-- **Profile Name**: Unique name for this assistant
-- **Server Type**: Any of the providers above (can't be changed after setup)
-- **Server URL**: Where your LLM is running
-- **Model Name**: Which model to use
-
-### Prompts
-- **System Prompt**: Sets the assistant's personality and behavior
-- **Technical Instructions**: Low-level instructions for tool usage (usually leave as default)
-
-### Advanced Settings
-- **Max Response Tokens**: Limit response length (default: 500)
-- **Max History Messages**: How many conversation turns to remember (default: 10)
-- **Max Tool Iterations**: Prevent infinite loops (default: 10)
-- **Response Mode**:
-  - **None**: Never ask follow-ups, end immediately
-  - **Smart** (default): Contextual follow-ups when relevant, user can end with "bye"/"thanks"
-  - **Always**: Natural conversational follow-ups, user can end with "bye"/"thanks"
-- **Follow-up Phrases**: Comma-separated phrases for detecting when assistant wants to continue (configurable per profile)
-- **End Conversation Words**: Comma-separated words/phrases for user-initiated ending (configurable per profile)
-- **Enable Smart Entity Index**: Context-aware entity discovery with automatic gap-filling for uncommon devices (default: enabled)
-
-### Temperature Settings
-
-Temperature controls response randomness (0.0 = deterministic, 1.0 = creative). Different providers have different optimal values:
-
-| Provider | Default | Reason |
-|----------|---------|--------|
-| **Gemini** | `1.0` | Google requires 1.0 for Gemini 3 to avoid "looping or degraded performance" |
-| **OpenAI (GPT-4)** | `0.5` | Balanced for reliable tool calling |
-| **OpenAI (GPT-5/o1)** | N/A | Reasoning models don't use temperature |
-| **Anthropic Claude** | `0.5` | Works well across 0.5-1.0 range |
-| **LM Studio / llama.cpp / vLLM** | `0.5` | Lower temps improve tool calling accuracy |
-| **Ollama** | `0.5` | Model-dependent, lower is safer for tools |
-| **OpenRouter** | `0.5` | Depends on underlying model |
-| **OpenClaw / Hermes Agent** | N/A | The agent manages its own model settings |
-
-**Note**: You can always override these defaults in Advanced Settings. For Home Assistant voice control, lower temperatures (0.5-0.7) generally provide more consistent tool calling and accurate entity control.
-
-### MCP Server Settings
-- **MCP Server Port**: Default 8090 (change if port conflict)
-- **Additional Allowed IPs/Ranges**: Whitelist Docker containers (e.g., `172.30.0.0/16`) or specific IPs for external MCP clients like Claude Code add-on
-
-### Web Search
-- **Web Search Provider**: Choose between:
-  - **None**: Search disabled
-  - **DuckDuckGo**: Free web search (no API key required)
-  - **Brave Search**: Requires API key from https://brave.com/search/api/
-  - **SearXNG**: Your own SearXNG instance. JSON output must be enabled in its `settings.yml` (`search: formats: [html, json]`)
-- **Brave Search API Key**: Required only if using Brave Search
-- **SearXNG URL**: Address of your instance (e.g. `http://192.168.1.10:8888`), required only if using SearXNG
-
-### Shared vs Per-Profile Settings
-
-MCP Assist has two types of settings:
-
-**Per-Profile Settings** (independent per conversation agent):
-- Model name, system prompt, technical instructions
-- Temperature, max tokens, response mode, thinking
-- Debug mode, max iterations, timeout
-- Server URL and API key
-- OpenClaw agent ID, session mode and session key
-
-**Shared Settings** (affect ALL profiles):
-- MCP server port
-- Web search provider (none/duckduckgo/brave/searxng)
-- Brave API key, SearXNG URL
-- Allowed IPs/CIDR ranges
-- Smart entity index (gap-filling)
-
-When you change shared settings in one profile's options, they apply to all profiles. This is intentional since all profiles share the same MCP server.
-
-## Model Compatibility Guide
-
-Not all LLM models support tool calling (function calling) equally well. **This integration works best with frontier models** (OpenAI GPT-5 series, Anthropic Claude, Google Gemini) **or higher-spec local models**. Smaller models may struggle with complex multi-entity queries that require synthesizing large tool result sets.  
-
-### Understanding Tool Calling Requirements
-
-Tool calling (function calling) requires the model to:
-1. Understand the user's request
-2. Decide which tool to call
-3. Format the tool arguments correctly as JSON
-4. Interpret the tool results
-5. Generate a natural response
-
-**Factors affecting tool calling success**:
-- **Model size**: Larger models (8B+) generally handle tool calling better
-- **Model architecture**: Vision-Language (VL) models behave differently than standard models
-- **Inference engine**: LM Studio and Ollama optimize models differently
-- **Quantization level**: Q4 vs Q8 can affect instruction following
-
-### Instruct vs Thinking/Reasoning Models
-
-**Instruct Models** (e.g., `qwen3-8b-instruct`):
-- Fast response times
-- Best for simple, single-action requests ("turn on the kitchen lights")
-- May struggle with complex queries requiring multiple tool calls
-- Good for basic voice commands
-
-**Thinking/Reasoning Models** (e.g., `qwen3-8b-thinking`):
-- Slower response times (more deliberate reasoning)
-- **Much better at complex requests** requiring multiple tool calls and context
-- Handles multi-step queries reliably ("check all rooms for open windows, then turn off lights in those rooms")
-- **Recommended for Home Assistant** where queries often involve discovery + action combinations
-
-Choose the model type that best fits your use case. Thinking/reasoning models offer better reliability with complex multi-tool queries, while instruct models provide faster responses for simple commands.
-
-With a hybrid model (e.g. Qwen3), you can get both: set **Thinking** to **Off** in Advanced Settings for fast voice replies, or **Low** / **Medium** / **High** for harder requests. You can also create two profiles with the same model and different Thinking settings.
-
-### Recommended Models
-
-**Consistently Reliable**:
-- ✅ **Qwen3 VL 32B Instruct** - Excellent tool calling
-- ✅ **Qwen3 30B A3B Instruct** - Very good tool calling
-- ✅ **Qwen3 8B Instruct** - Good balance, works reliably
-- ✅ **Anthropic Claude** - Excellent tool calling (cloud)
-- ✅ **OpenAI GPT-5 series** - Excellent tool calling, very fast (cloud)
-- ✅ **Google Gemini Flash** - Excellent tool calling, fast, cost-effective (cloud)
-
-### Testing Your Model
-
-When tool calling **doesn't work**, you'll see:
-- Model claims "I turned on the lights" but nothing happens
-- No `perform_action` tool calls in the logs
-- Actions don't execute, only narration
-
-When tool calling **works correctly**, you'll see in logs:
-- `discover_entities` called to find devices
-- `perform_action` called to control them
-- "✅ Successfully executed" messages
-- Devices actually change state
-- Tool calls visible in Settings → Voice Assistants → (profile) → Debug
-
-### General Guidelines
-
-**Start with larger models** (30B) if your hardware supports it - they work consistently across platforms.
-
-**If using smaller models** (4B-8B), test thoroughly:
-- Try a simple command like "turn on the kitchen lights"
-- Check logs to verify tools are being called
-- Confirm the device actually changes state
-- If it doesn't work, try the same model on a different platform (LM Studio vs Ollama)
-
-**Vision-Language (VL) models** are optimized for multimodal tasks and may have different tool calling behavior than standard models.
-
-### Dynamic Model Switching
-
-One of MCP Assist's features is **dynamic model switching** - you can change models in the configuration UI and it takes effect immediately without restarting Home Assistant. This makes it easy to:
-- Test different models
-- Switch between fast (Q4) and quality (Q8) quantizations
-- Try new models as they're released
-
-## Troubleshooting
-
-### Integration Won't Start
-- Check that the MCP port isn't already in use
-- Verify Home Assistant has permission to bind to the port
-- Check the Home Assistant logs for specific error messages
-
-### LM Studio Can't Connect to MCP
-- Ensure the MCP server is running (check integration status)
-- Verify the MCP configuration in LM Studio is correct
-- Check that the URL in LM Studio matches your MCP port (default: 8090)
-- Restart LM Studio after changing MCP configuration
-
-### Ollama Connection Issues
-- Verify Ollama is running: `ollama list`
-- Check the URL matches where Ollama is running (default: `http://localhost:11434`)
-- Ensure the model is loaded in Ollama
-
-### Cloud Provider Connection Issues
-- Verify your API key is valid with your provider
-- Check you have sufficient credits/quota remaining
-- Check for rate limit errors in Home Assistant logs
-- Try regenerating your API key if authentication fails
-- Verify your internet connection is working
-- Check Home Assistant logs for specific error codes
-
-### No Response from Assistant
-- Verify your LLM has a model loaded
-- Check that the model name in the integration matches exactly
-- Ensure your entities are exposed to the conversation assistant
-- Check Home Assistant logs for API errors
-- Enable Debug Mode for more detailed logging
-
-### Poor Response Quality
-- Try a different/larger model
-- Adjust the temperature setting (lower = more focused)
-- Ensure the model supports tool calling/function calling
-- Check that Technical Instructions are not modified
-
-### Tools Not Working
-- Verify "Control Home Assistant" is enabled
-- Check that entities are exposed (Settings → Voice Assistants → Expose)
-- Look for MCP server errors in logs
-- Ensure Max Tool Iterations isn't set too low
-
-## Entity Exposure
-
-The integration only discovers and controls entities that are exposed to the "conversation" assistant. Actions on entities that aren't exposed are refused, including ones reached through a device or area. To expose entities:
-
-1. Go to **Settings** → **Voice Assistants** → **Expose**
-2. Select entities you want the assistant to control
-3. The integration will automatically discover these when needed
+Tests use `pytest-homeassistant-custom-component`.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/mike-nott/mcp-assist/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/mike-nott/mcp-assist/discussions)
-- **Home Assistant Community**: [Community Forum](https://community.home-assistant.io/)
-
----
-
-## Kestrel fork (`0.19.1-kestrel.2`)
-
-This fork of [mike-nott/mcp-assist](https://github.com/mike-nott/mcp-assist) at tag `v0.19.1` adds
-long-term memory backed by a self-hosted [Mem0](https://github.com/mem0ai/mem0) server (REST API,
-`X-API-Key` auth). Every fork change is marked `[kestrel]`.
-
-- `custom_tools/mem0_memory.py` (new): tools `recall_memory(query)` and `save_memory(fact)`, plus a
-  background save of each finished turn (`POST /memories`, user + assistant message). Saves are
-  fire-and-forget tasks; failures only log a warning, so a Mem0 outage never breaks replies.
-  The turn save is skipped for any turn in which `save_memory` ran or was attempted (per-turn
-  ContextVar flag set in `_execute_single_tool_call`), so a remembered fact is stored once.
-- `custom_tools/__init__.py`: one loader branch for the Mem0 tool. The tools are listed only while
-  a profile has Mem0 enabled.
-- `mcp_server.py`: the custom-tools loader is always created (upstream creates it only when a web
-  search provider is set).
-- `agent.py`: one call to `schedule_turn_save()` after the turn is stored in history; also the
-  `ToolResultContent(result=llm.ToolResult(...))` fix for HA 2026.10's ChatLog API.
-- `config_flow.py`, `strings.json`, `translations/en.json`: profile options **Mem0 long-term
-  memory** (toggle), **Mem0 server URL** (default `http://127.0.0.1:8888`), **Mem0 API key**,
-  **Mem0 user ID** (default `kira`).
-
-### Rebasing onto a new upstream release
-
-```bash
-git remote add upstream https://github.com/mike-nott/mcp-assist.git   # once
-git fetch upstream --tags
-git rebase --onto vX.Y.Z v0.19.1 kestrel      # replay the fork commit(s) onto the new tag
-# conflicts are limited to the [kestrel] hunks; re-check that upstream still has:
-#   CustomToolsLoader.initialize, MCPServer.start's custom-tools block,
-#   ConversationAgent._build_response_result (history.add_turn), the options-flow init schema
-# drop the ToolResultContent hunk if upstream fixed it
-# set manifest.json "version" to "X.Y.Z-kestrel.1", then
-git format-patch vX.Y.Z --stdout > kestrel-mem0.patch
-```
-
-Without git: `git apply kestrel-mem0.patch` (or `patch -p1 < kestrel-mem0.patch`) on a clean copy
-of the new release, then fix any rejected hunks by hand.
+MIT. Copyright (c) 2025 Mike Nott. Copyright (c) 2026 Kira. See [LICENSE](LICENSE).
