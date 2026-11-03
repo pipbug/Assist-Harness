@@ -6,7 +6,9 @@ import json
 import re
 from pathlib import Path
 
-from homeassistant.helpers.selector import TextSelector, TextSelectorType
+import probatio
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.selector import BooleanSelector, TextSelector, TextSelectorType
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -280,32 +282,25 @@ async def test_system_options_and_profile_tool_selection(hass, monkeypatch):
     _lookup(STRINGS, "options.step.init.menu_options.profile_tools")
 
     read_url = next(sub for sub in system.subentries.values() if sub.subentry_type == "read_url")
-    tools_menu = await hass.config_entries.options.async_configure(
+    tools_form = await hass.config_entries.options.async_configure(
         menu["flow_id"],
         {"next_step_id": "profile_tools"},
     )
-    assert tools_menu["type"] == "menu"
-    assert tools_menu["step_id"] == "profile_tools"
-    assert list(tools_menu["menu_options"])[0] == "choose_tools"
-    assert tools_menu["menu_options"]["choose_tools"] == "Choose tools"
-    assert tools_menu["menu_options"][f"tool_{read_url.subentry_id}"] == "Read URL"
+    assert tools_form["type"] == "form"
+    assert tools_form["step_id"] == "profile_tools"
     assert "shared by every profile" in STRINGS["options"]["step"]["profile_tools"]["description"]
-    assert "use_all" not in STRINGS["options"]["step"].get("profile_tools", {})
-
-    tools_step = await hass.config_entries.options.async_configure(
-        tools_menu["flow_id"],
-        {"next_step_id": "choose_tools"},
-    )
-    assert tools_step["type"] == "form"
-    assert tools_step["step_id"] == "choose_tools"
-    defaults = []
-    for marker in tools_step["data_schema"].schema:
-        if getattr(marker, "schema", None) == "enabled_tools":
-            defaults = list(marker.default() if callable(marker.default) else marker.default)
-    assert defaults == [read_url.subentry_id]
+    assert "choose_tools" not in STRINGS["options"]["step"]
+    assert tools_form["description_placeholders"]["title_read_url"] == "Read URL"
+    assert STRINGS["options"]["step"]["profile_tools"]["sections"]["read_url"]["name"] == "{title_read_url}"
+    sections = _form_sections(tools_form)
+    assert list(sections) == ["read_url"]
+    assert sections["read_url"].options["collapsed"] is False
+    enabled, selector = _field(sections["read_url"], "enabled_for_profile")
+    assert enabled is True
+    assert isinstance(selector, BooleanSelector)
     chosen = await hass.config_entries.options.async_configure(
-        tools_step["flow_id"],
-        {"enabled_tools": []},
+        tools_form["flow_id"],
+        {"read_url": {"enabled_for_profile": False, "name": "Read URL", "prefix": ""}},
     )
     assert chosen["type"] == "create_entry"
     assert profile.options["disabled_tools"] == [read_url.subentry_id]
@@ -395,26 +390,34 @@ async def test_v2_options_migrate_to_subentries(hass):
     assert "disabled_tools" not in profile.options
 
 
-def _enabled_default(step) -> list:
-    for marker in step["data_schema"].schema:
-        if getattr(marker, "schema", None) == "enabled_tools":
+def _form_sections(step):
+    return {marker.schema: value for marker, value in step["data_schema"].schema.items()}
+
+
+def _field(section_schema, name):
+    for marker, selector in section_schema.schema.schema.items():
+        if getattr(marker, "schema", None) == name:
             default = marker.default
-            return list(default() if callable(default) else default)
-    return []
+            value = default() if callable(default) else default
+            return value, selector
+    raise AssertionError(name)
 
 
 async def _add_tool(hass, system, tool_id, payload):
+    before = set(system.subentries)
     created = await hass.config_entries.subentries.async_init(
         (system.entry_id, tool_id),
         context={"source": "user"},
     )
     await hass.config_entries.subentries.async_configure(created["flow_id"], payload)
-    return next(sub for sub in system.subentries.values() if sub.subentry_type == tool_id and sub.title == payload["name"])
+    added = set(system.subentries) - before
+    assert len(added) == 1
+    return system.subentries[added.pop()]
 
 
 @pytest.mark.usefixtures("_flow_deps")
-async def test_profile_tools_menu_edits_shared_settings_and_keeps_new_tools(hass):
-    """Choosing tools and editing one from the profile updates the system subentry."""
+async def test_profile_tools_form_edits_one_subentry_and_keeps_new_tools(hass):
+    """The Tools form saves the switch and only the subentries that changed."""
     from custom_components.assist_harness import async_setup_entry, async_update_options
 
     await async_ensure_tool_types(hass)
@@ -428,6 +431,13 @@ async def test_profile_tools_menu_edits_shared_settings_and_keeps_new_tools(hass
     read_url = await _add_tool(
         hass, system, "read_url", {"name": "Read URL", "prefix": ""}
     )
+    home = await _add_tool(
+        hass, system, "searxng", {"name": "SearXNG", "prefix": "home", "url": "http://192.168.1.10:8888"}
+    )
+    lab = await _add_tool(
+        hass, system, "searxng", {"name": "SearXNG", "prefix": "lab", "url": "http://192.168.1.20:8888"}
+    )
+    read_before = dict(read_url.data)
     reloads = []
 
     async def _reload(entry_id):
@@ -441,28 +451,71 @@ async def test_profile_tools_menu_edits_shared_settings_and_keeps_new_tools(hass
     server.registry = registry
 
     menu = await hass.config_entries.options.async_init(profile.entry_id)
-    tools_menu = await hass.config_entries.options.async_configure(
+    form = await hass.config_entries.options.async_configure(
         menu["flow_id"],
         {"next_step_id": "profile_tools"},
     )
-    assert list(tools_menu["menu_options"]) == [
-        "choose_tools",
-        f"tool_{brave.subentry_id}",
-        f"tool_{read_url.subentry_id}",
-    ]
-    assert tools_menu["menu_options"][f"tool_{brave.subentry_id}"] == "Brave Search"
+    assert form["type"] == "form"
+    sections = _form_sections(form)
+    assert list(sections) == ["brave", "read_url", "searxng", "searxng_2"]
+    assert form["description_placeholders"] == {
+        "title_brave": "Brave Search",
+        "title_read_url": "Read URL",
+        "title_searxng": "SearXNG (home)",
+        "title_searxng_2": "SearXNG (lab)",
+    }
+    serialized = probatio.to_field_list(form["data_schema"], custom_serializer=cv.custom_serializer)
+    assert [field["name"] for field in serialized] == ["brave", "read_url", "searxng", "searxng_2"]
+    assert all(field["expanded"] is True for field in serialized)
+    for slot in sections:
+        enabled, selector = _field(sections[slot], "enabled_for_profile")
+        assert enabled is True
+        assert isinstance(selector, BooleanSelector)
+    secret, secret_selector = _field(sections["brave"], "api_key")
+    assert secret == ""
+    assert isinstance(secret_selector, TextSelector)
+    assert secret_selector.config["type"] == TextSelectorType.PASSWORD
 
-    choose = await hass.config_entries.options.async_configure(
-        tools_menu["flow_id"],
-        {"next_step_id": "choose_tools"},
-    )
-    assert _enabled_default(choose) == [brave.subentry_id, read_url.subentry_id]
     saved = await hass.config_entries.options.async_configure(
-        choose["flow_id"],
-        {"enabled_tools": [brave.subentry_id]},
+        form["flow_id"],
+        {
+            "brave": {
+                "enabled_for_profile": True,
+                "name": "Web search",
+                "prefix": "web",
+                "api_key": "",
+            },
+            "read_url": {"enabled_for_profile": False, "name": "Read URL", "prefix": ""},
+            "searxng": {
+                "enabled_for_profile": True,
+                "name": "SearXNG",
+                "prefix": "home",
+                "url": "http://192.168.1.10:8888",
+            },
+            "searxng_2": {
+                "enabled_for_profile": True,
+                "name": "SearXNG",
+                "prefix": "lab",
+                "url": "http://192.168.1.20:8888",
+            },
+        },
     )
     assert saved["type"] == "create_entry"
     assert profile.options["disabled_tools"] == [read_url.subentry_id]
+    updated = system.subentries[brave.subentry_id]
+    assert updated.title == "Web search"
+    assert updated.data["prefix"] == "web_"
+    assert updated.data["api_key"] == "abc"
+    assert dict(system.subentries[read_url.subentry_id].data) == read_before
+    assert dict(system.subentries[home.subentry_id].data)["url"] == "http://192.168.1.10:8888"
+    assert dict(system.subentries[lab.subentry_id].data)["prefix"] == "lab_"
+    await hass.async_block_till_done()
+    names = [tool["name"] for tool in (await server.handle_tools_list())["tools"]]
+    assert "web_search" in names
+    assert "search" not in names
+    assert "home_search" in names
+    assert "lab_search" in names
+    assert reloads == []
 
     duck = await _add_tool(
         hass, system, "duckduckgo", {"name": "DuckDuckGo", "prefix": "ddg"}
@@ -470,63 +523,45 @@ async def test_profile_tools_menu_edits_shared_settings_and_keeps_new_tools(hass
     await hass.async_block_till_done()
     await registry.async_reload()
     menu = await hass.config_entries.options.async_init(profile.entry_id)
-    tools_menu = await hass.config_entries.options.async_configure(
+    form = await hass.config_entries.options.async_configure(
         menu["flow_id"],
         {"next_step_id": "profile_tools"},
     )
-    choose = await hass.config_entries.options.async_configure(
-        tools_menu["flow_id"],
-        {"next_step_id": "choose_tools"},
-    )
-    assert _enabled_default(choose) == [brave.subentry_id, duck.subentry_id]
+    sections = _form_sections(form)
+    assert _field(sections["duckduckgo"], "enabled_for_profile")[0] is True
+    assert _field(sections["read_url"], "enabled_for_profile")[0] is False
     listed = [
         {"type": "function", "function": {"name": name, "description": "", "parameters": {}}}
-        for name in ("discover_entities", "search", "read_url", "ddg_search")
+        for name in ("discover_entities", "web_search", "read_url", "ddg_search")
     ]
     kept = [tool["function"]["name"] for tool in filter_tools_for_entry(hass, profile, listed)]
-    assert kept == ["discover_entities", "search", "ddg_search"]
+    assert kept == ["discover_entities", "web_search", "ddg_search"]
 
-    # Leave the chooser without saving and edit Brave from the menu.
-    hass.config_entries.options.async_abort(choose["flow_id"])
-    menu = await hass.config_entries.options.async_init(profile.entry_id)
-    tools_menu = await hass.config_entries.options.async_configure(
-        menu["flow_id"],
-        {"next_step_id": "profile_tools"},
-    )
-    form = await hass.config_entries.options.async_configure(
-        tools_menu["flow_id"],
-        {"next_step_id": f"tool_{brave.subentry_id}"},
-    )
-    assert form["type"] == "form"
-    assert form["step_id"] == "tool_settings"
-    assert "shared by every profile" in STRINGS["options"]["step"]["tool_settings"]["description"]
-    secret_default = None
-    for marker, selector in form["data_schema"].schema.items():
-        if getattr(marker, "schema", None) == "api_key":
-            assert isinstance(selector, TextSelector)
-            assert selector.config["type"] == TextSelectorType.PASSWORD
-            secret_default = marker.default() if callable(marker.default) else marker.default
-    assert secret_default == ""
-    back = await hass.config_entries.options.async_configure(
+    invalid = await hass.config_entries.options.async_configure(
         form["flow_id"],
-        {"name": "Web search", "prefix": "home", "api_key": ""},
+        {
+            "brave": {"enabled_for_profile": True, "name": "Web search", "prefix": "", "api_key": ""},
+            "read_url": {"enabled_for_profile": False, "name": "Read URL", "prefix": ""},
+            "searxng": {
+                "enabled_for_profile": True,
+                "name": "SearXNG",
+                "prefix": "home",
+                "url": "http://192.168.1.10:8888",
+            },
+            "searxng_2": {
+                "enabled_for_profile": True,
+                "name": "SearXNG",
+                "prefix": "lab",
+                "url": "http://192.168.1.20:8888",
+            },
+            "duckduckgo": {"enabled_for_profile": True, "name": "DuckDuckGo", "prefix": ""},
+        },
     )
-    assert back["type"] == "menu"
-    assert back["step_id"] == "profile_tools"
-    updated = system.subentries[brave.subentry_id]
-    assert updated.title == "Web search"
-    assert updated.data["prefix"] == "home_"
-    assert updated.data["api_key"] == "abc"
-    await hass.async_block_till_done()
-    names = [tool["name"] for tool in (await server.handle_tools_list())["tools"]]
-    assert "home_search" in names
-    assert "search" not in names
-    assert "read_url" in names
-    assert reloads == []
-
-    hass.config_entries.async_remove_subentry(system, read_url.subentry_id)
-    await hass.async_block_till_done()
-    assert "disabled_tools" not in profile.options
+    assert invalid["type"] == "form"
+    assert invalid["errors"] == {"brave": "duplicate_tool_name", "duckduckgo": "duplicate_tool_name"}
+    assert system.subentries[brave.subentry_id].data["prefix"] == "web_"
+    assert system.subentries[brave.subentry_id].data["api_key"] == "abc"
+    assert duck.subentry_id not in (profile.options.get("disabled_tools") or [])
     assert reloads == []
 
 

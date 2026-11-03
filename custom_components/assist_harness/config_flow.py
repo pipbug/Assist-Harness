@@ -12,7 +12,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.data_entry_flow import FlowResult, section
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.selector import (
     SelectSelector,
@@ -1312,6 +1312,37 @@ class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return AssistHarnessOptionsFlow()
 
 
+# Translated section slots per tool type: "brave", then "brave_2" .. "brave_6".
+# Home Assistant looks section titles up as sections.<slot>.name and passes the
+# step's description_placeholders. Each slot's name is "{title_<slot>}", so two
+# SearXNG sections can show two different display names. A missing translation
+# falls back to the schema key, which is why an extra instance uses its title
+# as the key instead of "brave_7".
+_PROFILE_TOOL_SLOTS = 6
+
+
+def _tool_section_headers(subentries: list) -> list[str]:
+    """Display name, with the prefix when several instances share a title."""
+    labels: list[str] = []
+    for subentry in subentries:
+        title = subentry.title or subentry.subentry_type
+        if len(subentries) == 1:
+            labels.append(title)
+            continue
+        raw = str(dict(subentry.data).get("prefix") or "").strip().rstrip("_-.:/")
+        if raw and raw not in title:
+            labels.append(f"{title} ({raw})")
+        else:
+            labels.append(title)
+    seen: dict[str, int] = {}
+    unique: list[str] = []
+    for label in labels:
+        seen[label] = seen.get(label, 0) + 1
+        count = seen[label]
+        unique.append(label if count == 1 else f"{label} ({count})")
+    return unique
+
+
 class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Assist Harness."""
 
@@ -1361,151 +1392,203 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
             menu_options=["profile", "profile_tools"],
         )
 
-    def __getattr__(self, name: str):
-        """Open one tool's settings from a menu option named tool_<subentry id>."""
-        prefix = "async_step_tool_"
-        if not name.startswith(prefix):
-            raise AttributeError(name)
-        subentry_id = name[len(prefix) :]
-
-        async def _step(user_input=None):
-            self._editing_subentry_id = subentry_id
-            return await self.async_step_tool_settings(user_input)
-
-        return _step
-
     def _system_entry(self):
         for candidate in self.hass.config_entries.async_entries(DOMAIN):
             if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
                 return candidate
         return None
 
-    async def _choose_tools_label(self) -> str:
-        """Localized label for the first Tools menu option."""
-        from homeassistant.helpers.translation import async_get_translations
+    def _tool_rows(self, values: dict[str, Any] | None = None):
+        """One row per tool subentry, in the order the form shows them.
 
-        language = self.hass.config.language or "en"
-        translated = await async_get_translations(
-            self.hass, language, "options", [DOMAIN]
-        )
-        return (
-            translated.get(
-                f"component.{DOMAIN}.options.step.profile_tools.menu_options.choose_tools"
+        The section key is a stable slot (``brave``, ``brave_2``, ...) so
+        strings.json can translate the fields. The visible title is the
+        ``title_<slot>`` placeholder. Past the translated slots, the key is
+        the title itself: a missing translation falls back to the key.
+        """
+        from .tools.registry import cached_tool_types
+
+        system = self._system_entry()
+        if system is None:
+            return []
+        types = cached_tool_types()
+        grouped: dict[str, list] = {}
+        order: list[tuple[str, Any]] = []
+        for subentry in system.subentries.values():
+            tool = types.get(subentry.subentry_type)
+            if tool is None:
+                continue
+            grouped.setdefault(tool.id, []).append(subentry)
+            order.append((tool.id, subentry))
+        headers = {
+            tool_id: _tool_section_headers(subs) for tool_id, subs in grouped.items()
+        }
+        seen: dict[str, int] = {}
+        rows = []
+        for tool_id, subentry in order:
+            seen[tool_id] = seen.get(tool_id, 0) + 1
+            index = seen[tool_id]
+            header = headers[tool_id][index - 1]
+            translated = index <= _PROFILE_TOOL_SLOTS
+            if translated:
+                slot = tool_id if index == 1 else f"{tool_id}_{index}"
+            else:
+                slot = header
+            submitted = (values or {}).get(slot)
+            rows.append(
+                {
+                    "slot": slot,
+                    "header": header,
+                    "translated": translated,
+                    "tool": types[tool_id],
+                    "subentry": subentry,
+                    "submitted": submitted if isinstance(submitted, dict) else None,
+                }
             )
-            or "Choose tools"
-        )
+        used: dict[str, int] = {}
+        for row in rows:
+            slot = row["slot"]
+            if slot not in used:
+                used[slot] = 1
+                continue
+            used[slot] += 1
+            row["slot"] = f"{slot} ({used[slot]})"
+            row["submitted"] = None
+        return rows
 
     async def async_step_profile_tools(self, user_input=None):
-        """Menu: choose which tools this profile uses, or edit a shared tool."""
-        menu: dict[str, str] = {"choose_tools": await self._choose_tools_label()}
-        system = self._system_entry()
-        if system is not None:
-            for subentry in system.subentries.values():
-                menu[f"tool_{subentry.subentry_id}"] = subentry.title
-        return self.async_show_menu(step_id="profile_tools", menu_options=menu)
+        """One section per tool: profile switch, then the shared settings."""
+        from .tool_flow import _preview_names, _split_input, tool_config_schema
+        from .tools.registry import get_registry
 
-    async def async_step_choose_tools(self, user_input=None):
-        """Tick the tools this profile's agent can see.
-
-        Every tool is ticked unless this profile has switched it off. A tool
-        added later is absent from ``disabled_tools``, so it stays on.
-        """
-        from homeassistant.helpers.selector import (
-            SelectSelector,
-            SelectSelectorConfig,
-            SelectSelectorMode,
-        )
-
-        system = self._system_entry()
-        choices = []
-        if system is not None:
-            for subentry in system.subentries.values():
-                choices.append({"value": subentry.subentry_id, "label": subentry.title})
+        rows = self._tool_rows(user_input if isinstance(user_input, dict) else None)
         disabled = {
             str(item)
             for item in (self.config_entry.options.get("disabled_tools") or [])
         }
-        ticked = [item["value"] for item in choices if item["value"] not in disabled]
         errors: dict[str, str] = {}
+        parsed: list[dict[str, Any]] = []
         if user_input is not None:
-            selected = {str(item) for item in (user_input.get("enabled_tools") or [])}
-            switched_off = [item["value"] for item in choices if item["value"] not in selected]
-            merged = dict(self.config_entry.options)
-            merged.pop("profile_tools", None)
-            if switched_off:
-                merged["disabled_tools"] = switched_off
-            else:
-                merged.pop("disabled_tools", None)
-            self.hass.data.setdefault(DOMAIN, {})["tools_only_update"] = True
-            return self.async_create_entry(title="", data=merged)
-        schema: dict[Any, Any] = {}
-        if choices:
-            schema[vol.Optional("enabled_tools", default=ticked)] = SelectSelector(
-                SelectSelectorConfig(
-                    options=choices,
-                    multiple=True,
-                    mode=SelectSelectorMode.LIST,
+            claimed: dict[str, str] = {}
+            for row in rows:
+                submitted = row["submitted"]
+                if submitted is None:
+                    continue
+                tool = row["tool"]
+                stored = dict(row["subentry"].data)
+                payload = {
+                    key: value
+                    for key, value in submitted.items()
+                    if key != "enabled_for_profile"
+                }
+                name, prefix, config = _split_input(payload, tool)
+                for secret in tool.secrets:
+                    if not str(config.get(secret) or "").strip():
+                        config[secret] = stored.get(secret, "")
+                names = _preview_names(self.hass, tool, prefix, config)
+                clash = None
+                for tool_name in names:
+                    other = claimed.get(tool_name)
+                    if other is not None:
+                        clash = other
+                        break
+                    claimed[tool_name] = row["slot"]
+                if clash is not None:
+                    # Frontend 20260930.5 (HA 2026.10) draws a string error on
+                    # the section. A nested field map is not passed into the
+                    # section and renders as a blank alert.
+                    errors[row["slot"]] = "duplicate_tool_name"
+                    errors[clash] = "duplicate_tool_name"
+                parsed.append(
+                    {
+                        "row": row,
+                        "enabled": bool(submitted.get("enabled_for_profile", True)),
+                        "name": name,
+                        "prefix": prefix,
+                        "config": config,
+                    }
                 )
-            )
-        return self.async_show_form(
-            step_id="choose_tools",
-            data_schema=vol.Schema(schema),
-            errors=errors,
-        )
-
-    async def async_step_tool_settings(self, user_input=None):
-        """Edit a tool stored on the system entry. Settings are shared."""
-        from .tool_flow import (
-            _preview_names,
-            _split_input,
-            _taken_names,
-            tool_config_schema,
-        )
-        from .tools.registry import cached_tool_types, get_registry
-
-        system = self._system_entry()
-        subentry_id = getattr(self, "_editing_subentry_id", None)
-        subentry = None
-        if system is not None and subentry_id:
-            subentry = system.subentries.get(subentry_id)
-        if subentry is None:
-            return await self.async_step_profile_tools()
-        tool = cached_tool_types().get(subentry.subentry_type)
-        if tool is None:
-            return await self.async_step_profile_tools()
-        stored = dict(subentry.data)
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            name, prefix, config = _split_input(user_input, tool)
-            for secret in tool.secrets:
-                if not str(config.get(secret) or "").strip():
-                    config[secret] = stored.get(secret, "")
-            names = _preview_names(self.hass, tool, prefix, config)
-            taken = _taken_names(self.hass, skip_unique_id=subentry.unique_id)
-            if any(item in taken for item in names):
-                errors["prefix"] = "duplicate_tool_name"
             if not errors:
-                self.hass.config_entries.async_update_subentry(
-                    system,
-                    subentry,
-                    title=name,
-                    data={"prefix": prefix, **config},
-                )
-                registry = self.hass.data.get(DOMAIN, {}).get("tool_registry")
-                if registry is None:
-                    registry = get_registry(self.hass)
-                await registry.async_reload()
-                return await self.async_step_profile_tools()
-        suggested = {"name": subentry.title, **stored, "prefix": stored.get("prefix") or ""}
-        for secret in tool.secrets:
-            suggested[secret] = ""
+                system = self._system_entry()
+                changed = False
+                for item in parsed:
+                    subentry = item["row"]["subentry"]
+                    data = {"prefix": item["prefix"], **item["config"]}
+                    if subentry.title == item["name"] and dict(subentry.data) == data:
+                        continue
+                    self.hass.config_entries.async_update_subentry(
+                        system,
+                        subentry,
+                        title=item["name"],
+                        data=data,
+                    )
+                    changed = True
+                if changed:
+                    registry = self.hass.data.get(DOMAIN, {}).get("tool_registry")
+                    if registry is None:
+                        registry = get_registry(self.hass)
+                    await registry.async_reload()
+                switched_off = [
+                    item["row"]["subentry"].subentry_id
+                    for item in parsed
+                    if not item["enabled"]
+                ]
+                merged = dict(self.config_entry.options)
+                merged.pop("profile_tools", None)
+                if switched_off:
+                    merged["disabled_tools"] = switched_off
+                else:
+                    merged.pop("disabled_tools", None)
+                domain_data = self.hass.data.setdefault(DOMAIN, {})
+                if self.config_entry.update_listeners:
+                    domain_data.setdefault("tools_only_entries", set()).add(
+                        self.config_entry.entry_id
+                    )
+                domain_data["tools_only_update"] = True
+                return self.async_create_entry(title="", data=merged)
+
+        schema: dict[Any, Any] = {}
+        placeholders: dict[str, str] = {}
+        for row in rows:
+            subentry = row["subentry"]
+            tool = row["tool"]
+            stored = dict(subentry.data)
+            submitted = row["submitted"] or {}
+            enabled_default = (
+                bool(submitted["enabled_for_profile"])
+                if submitted and "enabled_for_profile" in submitted
+                else subentry.subentry_id not in disabled
+            )
+            current = {
+                "name": submitted.get("name", subentry.title),
+                "prefix": submitted.get("prefix", stored.get("prefix") or ""),
+            }
+            for key, value in stored.items():
+                if key == "prefix":
+                    continue
+                current.setdefault(key, value)
+            for key, value in submitted.items():
+                if key in ("enabled_for_profile", "name", "prefix"):
+                    continue
+                current[key] = value
+            for secret in tool.secrets:
+                typed = submitted.get(secret, "")
+                current[secret] = typed if str(typed or "").strip() else ""
+            fields: dict[Any, Any] = {
+                vol.Required("enabled_for_profile", default=enabled_default): BooleanSelector(),
+            }
+            for key, validator in tool_config_schema(tool, current).schema.items():
+                fields[key] = validator
+            schema[vol.Required(row["slot"])] = section(
+                vol.Schema(fields), {"collapsed": False}
+            )
+            if row["translated"]:
+                placeholders[f"title_{row['slot']}"] = row["header"]
         return self.async_show_form(
-            step_id="tool_settings",
-            data_schema=self.add_suggested_values_to_schema(
-                tool_config_schema(tool, suggested),
-                suggested,
-            ),
-            errors=errors,
+            step_id="profile_tools",
+            data_schema=vol.Schema(schema),
+            errors=errors or None,
+            description_placeholders=placeholders or None,
         )
 
     async def async_step_profile(self, user_input=None):

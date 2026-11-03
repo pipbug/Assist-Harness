@@ -56,7 +56,7 @@ On the Assist Harness integration page, the system entry lists each tool as its 
 
 A tool that can be added more than once (two SearXNG servers, several external MCP servers) asks for a name and an optional tool-name prefix so the tools do not collide (`home` becomes `home_`).
 
-Open a profile and choose **Tools**. The first item, **Choose tools**, lists every enabled tool ticked. Untick one to hide it from that profile. A tool you add later is on for every profile until you untick it. The same menu then lists each tool by its display name and opens that tool's settings. Those settings are stored on the system entry and shared by every profile; a secret left blank keeps the value already stored. Built-in Home Assistant tools such as `discover_entities` and `perform_action` are not in that list; they stay on.
+Open a profile and choose **Tools**. The form has one section per tool, titled with that tool's display name (and its prefix when you have two of the same kind, such as two SearXNG servers). The first switch, **Enabled for this profile**, hides the tool from that profile only. A tool you add later stays on until you switch it off. The fields under the switch are that tool's settings. They are stored on the system entry and shared by every profile; a secret left blank keeps the value already stored. One submit saves the switches and any settings that changed. Built-in Home Assistant tools such as `discover_entities` and `perform_action` are not in that list; they stay on.
 
 ### Built-in tool types
 
@@ -75,7 +75,7 @@ Mem0 talks to a self-hosted server (`X-API-Key`, `/memories`, `/search`) or to t
 
 ### Upgrading an Assist Harness entry
 
-Assist Harness **0.21.1** stores tools as config subentries (config entry version 3). On startup, version 1 and version 2 entries are migrated in place:
+Assist Harness **0.21.2** stores tools as config subentries (config entry version 3). On startup, version 1 and version 2 entries are migrated in place:
 
 - `search_provider: brave`, `duckduckgo`, or `searxng` becomes that search tool plus `read_url`. An old `enable_custom_tools: true` with no provider becomes Brave plus `read_url`. `none` adds neither.
 - The Brave API key and SearXNG URL move onto those tools.
