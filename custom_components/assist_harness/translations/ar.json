@@ -1,0 +1,1092 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "اعداد الملف الشخصي",
+        "description": "انشئ ملفا شخصيا جديدا للوكيل باسم فريد وشخصية مميزة.",
+        "data": {
+          "profile_name": "اسم الملف الشخصي",
+          "server_type": "نوع الخادم"
+        }
+      },
+      "server": {
+        "title": "تكوين الخادم",
+        "description": "قم بتكوين عنوان URL لخادم الاستدلال ومنفذ خادم MCP.",
+        "data": {
+          "lmstudio_url": "عنوان URL للخادم",
+          "api_key": "مفتاح API",
+          "mcp_port": "منفذ خادم MCP",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "hermes_url": "عنوان URL لخادم Hermes"
+        },
+        "data_description": {
+          "api_key": "مطلوب لمزوّدي الخدمات السحابية. اختياري للخوادم المحلية (LM Studio وllama.cpp وOllama وvLLM): اتركه فارغاً ما لم يتطلب الخادم مفتاحاً."
+        }
+      },
+      "openclaw_pairing": {
+        "title": "OpenClaw Device Pairing",
+        "description": "Your device needs to be approved on the OpenClaw server.\n\nApprove it by running `openclaw devices approve` or using the OpenClaw Control UI, then click Submit.\n\nDevice ID: {device_id}"
+      },
+      "model": {
+        "title": "النموذج والتعليمات",
+        "description": "{server_info}",
+        "data": {
+          "model_name": "اسم النموذج",
+          "system_prompt": "تعليمات النظام",
+          "technical_prompt": "التعليمات التقنية"
+        }
+      },
+      "advanced": {
+        "title": "الاعدادات المتقدمة",
+        "description": "{advanced_info}",
+        "data": {
+          "temperature": "درجة الحرارة",
+          "max_tokens": "الحد الاقصى لرموز الاستجابة",
+          "max_history": "الحد الاقصى لرسائل السجل",
+          "max_iterations": "الحد الاقصى لتكرارات الادوات",
+          "control_home_assistant": "التحكم في Home Assistant",
+          "response_mode": "وضع الاستجابة",
+          "follow_up_phrases": "عبارات المتابعة",
+          "end_words": "كلمات انهاء المحادثة",
+          "clean_responses": "تنظيف الردود للإخراج الصوتي",
+          "timeout": "انتهاء مهلة الاستجابة",
+          "thinking_mode": "التفكير",
+          "debug_mode": "وضع التصحيح",
+          "ollama_keep_alive": "ابق Ollama نشطا",
+          "ollama_num_ctx": "نافذة سياق Ollama",
+          "openclaw_agent_id": "معرّف الوكيل",
+          "openclaw_session_mode": "وضع الجلسة",
+          "openclaw_session_key": "مفتاح الجلسة / معرّف الجلسة",
+          "hermes_session_key": "مفتاح جلسة الذاكرة",
+          "system_prompt": "تعليمات النظام"
+        },
+        "data_description": {
+          "openclaw_session_key": "يُستخدم فقط عندما يكون وضع الجلسة 'Fixed'. أدخل مفتاحاً قصيراً مثل 'main' أو معرّف جلسة كاملاً مثل agent:main:main.",
+          "hermes_session_key": "مفتاح ثابت يحدد نطاق ذاكرة Hermes طويلة المدى لهذا الملف الشخصي.",
+          "openclaw_agent_id": "وكيل OpenClaw الذي يردّ على طلبات هذا الملف الشخصي. يجب أن يطابق وكيلاً مضبوطاً في OpenClaw. الافتراضي هو 'main'.",
+          "openclaw_session_mode": "'Per conversation' يمنح كل محادثة في Home Assistant جلسة OpenClaw خاصة بها، فتبقى الأسئلة التالية ضمنها. 'Fixed' يرسل كل الطلبات إلى الجلسة الواحدة المحددة في مفتاح الجلسة.",
+          "system_prompt": "يُرسل إلى OpenClaw مع كل طلب كتعليمات نظام إضافية، مثلاً لتحديد شخصية. اتركه فارغاً لاستخدام تعليمات الوكيل الخاصة. تُضاف غرفة الجهاز الصوتي تلقائياً.",
+          "thinking_mode": "يتحكم في استدلال النماذج التي تفكر قبل الإجابة. الإيقاف هو الأسرع للصوت. افتراضي الخادم لا يرسل شيئاً. لا تلتزم كل الخوادم بهذا الإعداد (غير موثوق في LM Studio)."
+        }
+      },
+      "mcp_server": {
+        "title": "اعدادات خادم MCP المشتركة",
+        "description": "تؤثر هذه الاعدادات على جميع الملفات الشخصية. ستؤثر التغييرات هنا على كل وكيل محادثة Assist Harness.",
+        "data": {
+          "mcp_port": "منفذ خادم MCP",
+          "search_provider": "البحث على الويب",
+          "brave_api_key": "مفتاح API لـ Brave Search",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "عناوين IP/نطاقات اضافية مسموح بها",
+          "enable_gap_filling": "تمكين فهرس الكيانات الذكي",
+          "max_entities_per_discovery": "الحد الاقصى للكيانات لكل اكتشاف (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "عنوان مثيل SearXNG الخاص بك، مثل http://192.168.1.10:8888. يجب تفعيل مخرجات JSON في ملف settings.yml الخاص به (search: formats: json)."
+        }
+      },
+      "import_offer": {
+        "title": "Import from MCP Assist",
+        "description": "Found {count} MCP Assist entr(ies). Copy their system settings and every profile, including prompts, model, keys, and Mem0, into Assist Harness? The original integration is not modified or removed.",
+        "data": {
+          "import_existing": "Import existing MCP Assist configuration"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "لا يمكن الاتصال بخادم الاستدلال. تاكد من انه يعمل ويمكن الوصول اليه.",
+      "no_models": "لا توجد نماذج محملة على الخادم. يرجى تحميل نموذج اولا.",
+      "invalid_model": "النموذج المحدد غير متوفر على الخادم.",
+      "invalid_port": "يجب ان يكون المنفذ بين 1024 و 65535.",
+      "invalid_ip": "تنسيق عنوان IP او نطاق CIDR غير صالح. استخدم قيما مفصولة بفواصل مثل: 172.30.0.0/16, 192.168.1.100",
+      "profile_name_required": "اسم الملف الشخصي مطلوب.",
+      "invalid_json": "تنسيق JSON غير صالح. يرجى التحقق من تكوين خوادم MCP الخاصة بك.",
+      "invalid_api_key": "مفتاح API غير صالح. يرجى التحقق والمحاولة مرة اخرى.",
+      "auth_failed": "فشلت المصادقة. يرجى التحقق من مفتاح API الخاص بك.",
+      "unknown": "حدث خطا غير معروف.",
+      "openclaw_not_paired": "Device not yet approved on the OpenClaw server. Please approve it and try again.",
+      "openclaw_connection_failed": "Could not connect to the OpenClaw gateway. Check the host, port, and token."
+    },
+    "abort": {
+      "already_configured": "يوجد ملف شخصي بهذا الاسم بالفعل. يرجى اختيار اسم مختلف.",
+      "import_success": "Imported your MCP Assist profiles into Assist Harness. The original entries were left unchanged."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "الملف الشخصي",
+        "description": "اختر ما تريد تغييره لهذا الملف الشخصي.",
+        "menu_options": {
+          "profile": "إعدادات الملف الشخصي",
+          "profile_tools": "الأدوات"
+        }
+      },
+      "mcp_server": {
+        "title": "اعدادات خادم MCP المشتركة",
+        "description": "هذه الاعدادات مشتركة بين جميع الملفات الشخصية",
+        "data": {
+          "mcp_port": "منفذ خادم MCP",
+          "search_provider": "البحث على الويب",
+          "brave_api_key": "مفتاح API لـ Brave Search",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "عناوين IP/نطاقات اضافية مسموح بها",
+          "enable_gap_filling": "تمكين فهرس الكيانات الذكي",
+          "max_entities_per_discovery": "الحد الاقصى للكيانات لكل اكتشاف (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "عنوان مثيل SearXNG الخاص بك، مثل http://192.168.1.10:8888. يجب تفعيل مخرجات JSON في ملف settings.yml الخاص به (search: formats: json)."
+        }
+      },
+      "profile": {
+        "title": "اعدادات الملف الشخصي",
+        "description": "{server_info}",
+        "data": {
+          "profile_name": "اسم الملف الشخصي",
+          "lmstudio_url": "عنوان URL للخادم",
+          "api_key": "مفتاح API",
+          "model_name": "اسم النموذج",
+          "system_prompt": "تعليمات النظام",
+          "technical_prompt": "التعليمات التقنية",
+          "temperature": "درجة الحرارة",
+          "max_tokens": "الحد الاقصى لرموز الاستجابة",
+          "max_history": "الحد الاقصى لرسائل السجل",
+          "max_iterations": "الحد الاقصى لتكرارات الادوات",
+          "control_home_assistant": "التحكم في Home Assistant",
+          "response_mode": "وضع الاستجابة",
+          "follow_up_phrases": "عبارات المتابعة",
+          "end_words": "كلمات انهاء المحادثة",
+          "clean_responses": "تنظيف الردود للإخراج الصوتي",
+          "timeout": "انتهاء مهلة الاستجابة",
+          "thinking_mode": "التفكير",
+          "debug_mode": "وضع التصحيح",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "ollama_keep_alive": "ابق Ollama نشطا",
+          "ollama_num_ctx": "نافذة سياق Ollama",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "openclaw_agent_id": "معرّف الوكيل",
+          "openclaw_session_mode": "وضع الجلسة",
+          "openclaw_session_key": "مفتاح الجلسة / معرّف الجلسة",
+          "hermes_url": "عنوان URL لخادم Hermes",
+          "hermes_session_key": "مفتاح جلسة الذاكرة"
+        },
+        "data_description": {
+          "openclaw_session_key": "يُستخدم فقط عندما يكون وضع الجلسة 'Fixed'. أدخل مفتاحاً قصيراً مثل 'main' أو معرّف جلسة كاملاً مثل agent:main:main.",
+          "hermes_session_key": "مفتاح ثابت يحدد نطاق ذاكرة Hermes طويلة المدى لهذا الملف الشخصي.",
+          "openclaw_agent_id": "وكيل OpenClaw الذي يردّ على طلبات هذا الملف الشخصي. يجب أن يطابق وكيلاً مضبوطاً في OpenClaw. الافتراضي هو 'main'.",
+          "openclaw_session_mode": "'Per conversation' يمنح كل محادثة في Home Assistant جلسة OpenClaw خاصة بها، فتبقى الأسئلة التالية ضمنها. 'Fixed' يرسل كل الطلبات إلى الجلسة الواحدة المحددة في مفتاح الجلسة.",
+          "api_key": "مطلوب لمزوّدي الخدمات السحابية. اختياري للخوادم المحلية (LM Studio وllama.cpp وOllama وvLLM): اتركه فارغاً ما لم يتطلب الخادم مفتاحاً.",
+          "thinking_mode": "يتحكم في استدلال النماذج التي تفكر قبل الإجابة. الإيقاف هو الأسرع للصوت. افتراضي الخادم لا يرسل شيئاً. لا تلتزم كل الخوادم بهذا الإعداد (غير موثوق في LM Studio)."
+        }
+      },
+      "profile_tools": {
+        "title": "الأدوات",
+        "description": "هذه الإعدادات مشتركة بين كل الملفات الشخصية. اترك السر فارغًا للإبقاء على القيمة المحفوظة. أوقف أداة لإخفائها عن هذا الملف؛ الأداة التي تُضاف لاحقًا تبقى مفعّلة حتى توقفها.",
+        "data": {
+          "mcp_port": "منفذ خادم MCP (مشترك بين كل الملفات)",
+          "allowed_ips": "عناوين IP أو نطاقات إضافية مسموحة (مشتركة بين كل الملفات)",
+          "enable_gap_filling": "فهرس الكيانات الذكي (مشترك بين كل الملفات)",
+          "max_entities_per_discovery": "الحد الأقصى للكيانات في كل بحث (مشترك بين كل الملفات)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
+        "sections": {
+          "brave": {
+            "name": "{title_brave}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_2": {
+            "name": "{title_brave_2}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_3": {
+            "name": "{title_brave_3}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_4": {
+            "name": "{title_brave_4}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_5": {
+            "name": "{title_brave_5}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_6": {
+            "name": "{title_brave_6}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "duckduckgo": {
+            "name": "{title_duckduckgo}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_2": {
+            "name": "{title_duckduckgo_2}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_3": {
+            "name": "{title_duckduckgo_3}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_4": {
+            "name": "{title_duckduckgo_4}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_5": {
+            "name": "{title_duckduckgo_5}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_6": {
+            "name": "{title_duckduckgo_6}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "searxng": {
+            "name": "{title_searxng}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_2": {
+            "name": "{title_searxng_2}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_3": {
+            "name": "{title_searxng_3}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_4": {
+            "name": "{title_searxng_4}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_5": {
+            "name": "{title_searxng_5}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_6": {
+            "name": "{title_searxng_6}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "read_url": {
+            "name": "{title_read_url}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_2": {
+            "name": "{title_read_url_2}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_3": {
+            "name": "{title_read_url_3}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_4": {
+            "name": "{title_read_url_4}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_5": {
+            "name": "{title_read_url_5}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_6": {
+            "name": "{title_read_url_6}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "mem0_memory": {
+            "name": "{title_mem0_memory}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_2": {
+            "name": "{title_mem0_memory_2}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_3": {
+            "name": "{title_mem0_memory_3}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_4": {
+            "name": "{title_mem0_memory_4}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_5": {
+            "name": "{title_mem0_memory_5}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_6": {
+            "name": "{title_mem0_memory_6}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "external_mcp": {
+            "name": "{title_external_mcp}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_2": {
+            "name": "{title_external_mcp_2}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_3": {
+            "name": "{title_external_mcp_3}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_4": {
+            "name": "{title_external_mcp_4}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_5": {
+            "name": "{title_external_mcp_5}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_6": {
+            "name": "{title_external_mcp_6}",
+            "data": {
+              "enabled_for_profile": "مُفعّل لهذا الملف الشخصي",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "لهذا الملف الشخصي فقط. الحقول أدناه مشتركة بين كل الملفات.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          }
+        }
+      }
+    },
+    "abort": {},
+    "error": {
+      "duplicate_tool_name": "هذه البادئة تتعارض مع أداة أخرى. اختر بادئة مختلفة.",
+      "invalid_ip": "تنسيق عنوان IP او نطاق CIDR غير صالح. استخدم قيما مفصولة بفواصل مثل: 172.30.0.0/16, 192.168.1.100"
+    }
+  },
+  "entity": {
+    "conversation": {
+      "assist_harness": {
+        "name": "{profile_name}"
+      }
+    }
+  },
+  "selector": {
+    "thinking_mode": {
+      "options": {
+        "default": "افتراضي الخادم",
+        "off": "إيقاف",
+        "low": "منخفض",
+        "medium": "متوسط",
+        "high": "مرتفع"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
+      }
+    }
+  }
+}

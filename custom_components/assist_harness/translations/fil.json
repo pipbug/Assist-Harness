@@ -1,0 +1,1092 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pag-setup ng Profile",
+        "description": "Lumikha ng bagong profile ng agent na may natatanging pangalan at personalidad.",
+        "data": {
+          "profile_name": "Pangalan ng Profile",
+          "server_type": "Uri ng Server"
+        }
+      },
+      "server": {
+        "title": "Pagsasaayos ng Server",
+        "description": "I-configure ang URL ng iyong inference server at ang port ng MCP server.",
+        "data": {
+          "lmstudio_url": "URL ng Server",
+          "api_key": "API Key",
+          "mcp_port": "Port ng MCP Server",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "hermes_url": "URL ng Hermes Server"
+        },
+        "data_description": {
+          "api_key": "Kailangan para sa mga cloud provider. Opsyonal para sa mga lokal na server (LM Studio, llama.cpp, Ollama, vLLM): iwanang blangko maliban kung nangangailangan ng key ang server."
+        }
+      },
+      "openclaw_pairing": {
+        "title": "OpenClaw Device Pairing",
+        "description": "Your device needs to be approved on the OpenClaw server.\n\nApprove it by running `openclaw devices approve` or using the OpenClaw Control UI, then click Submit.\n\nDevice ID: {device_id}"
+      },
+      "model": {
+        "title": "Modelo at mga Tagubilin",
+        "description": "{server_info}",
+        "data": {
+          "model_name": "Pangalan ng Modelo",
+          "system_prompt": "Mga Tagubilin ng Sistema",
+          "technical_prompt": "Mga Teknikal na Tagubilin"
+        }
+      },
+      "advanced": {
+        "title": "Mga Advanced na Setting",
+        "description": "{advanced_info}",
+        "data": {
+          "temperature": "Temperatura",
+          "max_tokens": "Max na Token ng Tugon",
+          "max_history": "Max na Mensahe ng Kasaysayan",
+          "max_iterations": "Max na Pag-uulit ng Tool",
+          "control_home_assistant": "Kontrolin ang Home Assistant",
+          "response_mode": "Mode ng Tugon",
+          "follow_up_phrases": "Mga Follow-up na Parirala",
+          "end_words": "Mga Salita para Tapusin ang Usapan",
+          "clean_responses": "Linisin ang mga Tugon para sa Voice Output",
+          "timeout": "Response Time Out",
+          "thinking_mode": "Pag-iisip",
+          "debug_mode": "Debug Mode",
+          "ollama_keep_alive": "Panatilihing Aktibo ang Ollama",
+          "ollama_num_ctx": "Ollama Context Window",
+          "openclaw_agent_id": "Agent ID",
+          "openclaw_session_mode": "Session Mode",
+          "openclaw_session_key": "Session Key / Session ID",
+          "hermes_session_key": "Session Key ng Memorya",
+          "system_prompt": "Mga Tagubilin ng Sistema"
+        },
+        "data_description": {
+          "openclaw_session_key": "Ginagamit lamang kapag 'Fixed' ang Session Mode. Maglagay ng maikling key tulad ng 'main' o buong session ID tulad ng agent:main:main.",
+          "hermes_session_key": "Stable na key na tumutukoy sa pangmatagalang memorya ng Hermes para sa profile na ito.",
+          "openclaw_agent_id": "Ang OpenClaw agent na sumasagot sa mga kahilingan ng profile na ito. Dapat itong tumugma sa agent na naka-configure sa OpenClaw. Ang default ay 'main'.",
+          "openclaw_session_mode": "Binibigyan ng 'Per conversation' ang bawat Home Assistant conversation ng sarili nitong OpenClaw session, at nananatili roon ang mga follow-up na tanong. Ipinapadala ng 'Fixed' ang lahat ng kahilingan sa iisang session na itinakda sa Session Key.",
+          "system_prompt": "Ipinapadala sa OpenClaw kasama ng bawat kahilingan bilang karagdagang system prompt, halimbawa para magtakda ng persona. Iwanang blangko para gamitin ang sariling mga prompt ng agent. Awtomatikong idinaragdag ang kuwarto ng voice satellite.",
+          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio)."
+        }
+      },
+      "mcp_server": {
+        "title": "Mga Shared na Setting ng MCP Server",
+        "description": "Ang mga setting na ito ay nakakaapekto sa LAHAT ng profile. Ang mga pagbabago dito ay makakaapekto sa bawat Assist Harness conversation agent.",
+        "data": {
+          "mcp_port": "Port ng MCP Server",
+          "search_provider": "Web Search",
+          "brave_api_key": "Brave Search API Key",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "Karagdagang Pinapayagang IP/Saklaw",
+          "enable_gap_filling": "I-enable ang Smart Entity Index",
+          "max_entities_per_discovery": "Max na Entity Bawat Paghahanap (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "Address ng iyong SearXNG instance, hal. http://192.168.1.10:8888. Dapat naka-enable ang JSON output sa settings.yml nito (search: formats: json)."
+        }
+      },
+      "import_offer": {
+        "title": "Import from MCP Assist",
+        "description": "Found {count} MCP Assist entr(ies). Copy their system settings and every profile, including prompts, model, keys, and Mem0, into Assist Harness? The original integration is not modified or removed.",
+        "data": {
+          "import_existing": "Import existing MCP Assist configuration"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Hindi makakonekta sa inference server. Tiyaking tumatakbo ito at naa-access.",
+      "no_models": "Walang naka-load na modelo sa server. Mag-load muna ng modelo.",
+      "invalid_model": "Ang tinukoy na modelo ay hindi available sa server.",
+      "invalid_port": "Ang port ay dapat nasa pagitan ng 1024 at 65535.",
+      "invalid_ip": "Hindi wastong format ng IP address o CIDR range. Gumamit ng mga halaga na pinaghihiwalay ng kuwit tulad ng: 172.30.0.0/16, 192.168.1.100",
+      "profile_name_required": "Kinakailangan ang pangalan ng profile.",
+      "invalid_json": "Hindi wastong format ng JSON. Suriin ang iyong pagsasaayos ng mga MCP server.",
+      "invalid_api_key": "Hindi wastong API key. Suriin at subukan muli.",
+      "auth_failed": "Nabigo ang pagpapatunay. I-verify ang iyong API key.",
+      "unknown": "Isang hindi kilalang error ang naganap.",
+      "openclaw_not_paired": "Device not yet approved on the OpenClaw server. Please approve it and try again.",
+      "openclaw_connection_failed": "Could not connect to the OpenClaw gateway. Check the host, port, and token."
+    },
+    "abort": {
+      "already_configured": "Mayroon nang profile na may ganitong pangalan. Pumili ng ibang pangalan.",
+      "import_success": "Imported your MCP Assist profiles into Assist Harness. The original entries were left unchanged."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Profile",
+        "description": "Piliin kung ano ang babaguhin para sa profile na ito.",
+        "menu_options": {
+          "profile": "Mga setting ng profile",
+          "profile_tools": "Mga tool"
+        }
+      },
+      "mcp_server": {
+        "title": "Mga Shared na Setting ng MCP Server",
+        "description": "Ang mga setting na ito ay ibinabahagi sa LAHAT ng profile",
+        "data": {
+          "mcp_port": "Port ng MCP Server",
+          "search_provider": "Web Search",
+          "brave_api_key": "Brave Search API Key",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "Karagdagang Pinapayagang IP/Saklaw",
+          "enable_gap_filling": "I-enable ang Smart Entity Index",
+          "max_entities_per_discovery": "Max na Entity Bawat Paghahanap (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "Address ng iyong SearXNG instance, hal. http://192.168.1.10:8888. Dapat naka-enable ang JSON output sa settings.yml nito (search: formats: json)."
+        }
+      },
+      "profile": {
+        "title": "Mga Setting ng Profile",
+        "description": "{server_info}",
+        "data": {
+          "profile_name": "Pangalan ng Profile",
+          "lmstudio_url": "URL ng Server",
+          "api_key": "API Key",
+          "model_name": "Pangalan ng Modelo",
+          "system_prompt": "Mga Tagubilin ng Sistema",
+          "technical_prompt": "Mga Teknikal na Tagubilin",
+          "temperature": "Temperatura",
+          "max_tokens": "Max na Token ng Tugon",
+          "max_history": "Max na Mensahe ng Kasaysayan",
+          "max_iterations": "Max na Pag-uulit ng Tool",
+          "control_home_assistant": "Kontrolin ang Home Assistant",
+          "response_mode": "Mode ng Tugon",
+          "follow_up_phrases": "Mga Follow-up na Parirala",
+          "end_words": "Mga Salita para Tapusin ang Usapan",
+          "clean_responses": "Linisin ang mga Tugon para sa Voice Output",
+          "timeout": "Response Time Out",
+          "thinking_mode": "Pag-iisip",
+          "debug_mode": "Debug Mode",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "ollama_keep_alive": "Panatilihing Aktibo ang Ollama",
+          "ollama_num_ctx": "Ollama Context Window",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "openclaw_agent_id": "Agent ID",
+          "openclaw_session_mode": "Session Mode",
+          "openclaw_session_key": "Session Key / Session ID",
+          "hermes_url": "URL ng Hermes Server",
+          "hermes_session_key": "Session Key ng Memorya"
+        },
+        "data_description": {
+          "openclaw_session_key": "Ginagamit lamang kapag 'Fixed' ang Session Mode. Maglagay ng maikling key tulad ng 'main' o buong session ID tulad ng agent:main:main.",
+          "hermes_session_key": "Stable na key na tumutukoy sa pangmatagalang memorya ng Hermes para sa profile na ito.",
+          "openclaw_agent_id": "Ang OpenClaw agent na sumasagot sa mga kahilingan ng profile na ito. Dapat itong tumugma sa agent na naka-configure sa OpenClaw. Ang default ay 'main'.",
+          "openclaw_session_mode": "Binibigyan ng 'Per conversation' ang bawat Home Assistant conversation ng sarili nitong OpenClaw session, at nananatili roon ang mga follow-up na tanong. Ipinapadala ng 'Fixed' ang lahat ng kahilingan sa iisang session na itinakda sa Session Key.",
+          "api_key": "Kailangan para sa mga cloud provider. Opsyonal para sa mga lokal na server (LM Studio, llama.cpp, Ollama, vLLM): iwanang blangko maliban kung nangangailangan ng key ang server.",
+          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio)."
+        }
+      },
+      "profile_tools": {
+        "title": "Mga tool",
+        "description": "Ang mga setting na ito ay pinaghahatian ng bawat profile. Iwanang blangko ang isang lihim para manatili ang nakaimbak na halaga. I-off ang isang tool para itago ito sa profile na ito; mananatiling naka-on ang bagong tool hanggang i-off mo ito.",
+        "data": {
+          "mcp_port": "Port ng MCP server (pinaghahatian ng bawat profile)",
+          "allowed_ips": "Karagdagang pinapayagang IP/saklaw (pinaghahatian ng bawat profile)",
+          "enable_gap_filling": "Smart Entity Index (pinaghahatian ng bawat profile)",
+          "max_entities_per_discovery": "Pinakamaraming entity bawat paghahanap (pinaghahatian ng bawat profile)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
+        "sections": {
+          "brave": {
+            "name": "{title_brave}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_2": {
+            "name": "{title_brave_2}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_3": {
+            "name": "{title_brave_3}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_4": {
+            "name": "{title_brave_4}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_5": {
+            "name": "{title_brave_5}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_6": {
+            "name": "{title_brave_6}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "duckduckgo": {
+            "name": "{title_duckduckgo}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_2": {
+            "name": "{title_duckduckgo_2}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_3": {
+            "name": "{title_duckduckgo_3}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_4": {
+            "name": "{title_duckduckgo_4}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_5": {
+            "name": "{title_duckduckgo_5}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_6": {
+            "name": "{title_duckduckgo_6}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "searxng": {
+            "name": "{title_searxng}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_2": {
+            "name": "{title_searxng_2}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_3": {
+            "name": "{title_searxng_3}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_4": {
+            "name": "{title_searxng_4}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_5": {
+            "name": "{title_searxng_5}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_6": {
+            "name": "{title_searxng_6}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "read_url": {
+            "name": "{title_read_url}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_2": {
+            "name": "{title_read_url_2}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_3": {
+            "name": "{title_read_url_3}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_4": {
+            "name": "{title_read_url_4}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_5": {
+            "name": "{title_read_url_5}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_6": {
+            "name": "{title_read_url_6}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "mem0_memory": {
+            "name": "{title_mem0_memory}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_2": {
+            "name": "{title_mem0_memory_2}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_3": {
+            "name": "{title_mem0_memory_3}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_4": {
+            "name": "{title_mem0_memory_4}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_5": {
+            "name": "{title_mem0_memory_5}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_6": {
+            "name": "{title_mem0_memory_6}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "external_mcp": {
+            "name": "{title_external_mcp}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_2": {
+            "name": "{title_external_mcp_2}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_3": {
+            "name": "{title_external_mcp_3}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_4": {
+            "name": "{title_external_mcp_4}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_5": {
+            "name": "{title_external_mcp_5}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_6": {
+            "name": "{title_external_mcp_6}",
+            "data": {
+              "enabled_for_profile": "Naka-on para sa profile na ito",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Para sa profile na ito lang. Ang mga field sa ibaba ay pinaghahatian ng bawat profile.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          }
+        }
+      }
+    },
+    "abort": {},
+    "error": {
+      "duplicate_tool_name": "Bumabangga pa rin ang prefix na iyan sa ibang tool. Pumili ng iba.",
+      "invalid_ip": "Hindi wastong format ng IP address o CIDR range. Gumamit ng mga halaga na pinaghihiwalay ng kuwit tulad ng: 172.30.0.0/16, 192.168.1.100"
+    }
+  },
+  "entity": {
+    "conversation": {
+      "assist_harness": {
+        "name": "{profile_name}"
+      }
+    }
+  },
+  "selector": {
+    "thinking_mode": {
+      "options": {
+        "default": "Default ng server",
+        "off": "Off",
+        "low": "Mababa",
+        "medium": "Katamtaman",
+        "high": "Mataas"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
+      }
+    }
+  }
+}

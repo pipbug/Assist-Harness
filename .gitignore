@@ -129,7 +129,7 @@ known_devices.yaml
 *.log
 
 # Development/Test files
-test_*.py
+/test_*.py
 test_*.sh
 restart_ha.py
 monitor_mcp.sh

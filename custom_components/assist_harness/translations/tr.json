@@ -1,0 +1,1092 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Profil Ayarlari",
+        "description": "Benzersiz bir ad ve kisilige sahip yeni bir ajan profili olusturun.",
+        "data": {
+          "profile_name": "Profil Adi",
+          "server_type": "Sunucu Turu"
+        }
+      },
+      "server": {
+        "title": "Sunucu Yapilandirmasi",
+        "description": "Cikarim sunucusu URL'nizi ve MCP sunucu portunuzu yapilandirin.",
+        "data": {
+          "lmstudio_url": "Sunucu URL'si",
+          "api_key": "API Anahtari",
+          "mcp_port": "MCP Sunucu Portu",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "hermes_url": "Hermes Sunucu URL'si"
+        },
+        "data_description": {
+          "api_key": "Bulut sağlayıcıları için gereklidir. Yerel sunucular (LM Studio, llama.cpp, Ollama, vLLM) için isteğe bağlıdır: sunucu anahtar istemiyorsa boş bırakın."
+        }
+      },
+      "openclaw_pairing": {
+        "title": "OpenClaw Device Pairing",
+        "description": "Your device needs to be approved on the OpenClaw server.\n\nApprove it by running `openclaw devices approve` or using the OpenClaw Control UI, then click Submit.\n\nDevice ID: {device_id}"
+      },
+      "model": {
+        "title": "Model ve Yonergeler",
+        "description": "{server_info}",
+        "data": {
+          "model_name": "Model Adi",
+          "system_prompt": "Sistem Yonergeleri",
+          "technical_prompt": "Teknik Talimatlar"
+        }
+      },
+      "advanced": {
+        "title": "Gelismis Ayarlar",
+        "description": "{advanced_info}",
+        "data": {
+          "temperature": "Sicaklik",
+          "max_tokens": "Maksimum Yanit Tokenleri",
+          "max_history": "Maksimum Gecmis Mesajlari",
+          "max_iterations": "Maksimum Arac Yinelemeleri",
+          "control_home_assistant": "Home Assistant'i Kontrol Et",
+          "response_mode": "Yanit Modu",
+          "follow_up_phrases": "Takip Ifadeleri",
+          "end_words": "Konusmayi Bitirme Kelimeleri",
+          "clean_responses": "Sesli Çıktı İçin Yanıtları Temizle",
+          "timeout": "Yanit Zaman Asimi",
+          "thinking_mode": "Düşünme",
+          "debug_mode": "Hata Ayiklama Modu",
+          "ollama_keep_alive": "Ollama'yi Aktif Tut",
+          "ollama_num_ctx": "Ollama Baglam Penceresi",
+          "openclaw_agent_id": "Ajan ID'si",
+          "openclaw_session_mode": "Oturum Modu",
+          "openclaw_session_key": "Oturum Anahtarı / Oturum ID'si",
+          "hermes_session_key": "Bellek Oturum Anahtarı",
+          "system_prompt": "Sistem Yonergeleri"
+        },
+        "data_description": {
+          "openclaw_session_key": "Yalnızca Oturum Modu 'Fixed' olduğunda kullanılır. 'main' gibi kısa bir anahtar ya da agent:main:main gibi tam bir oturum ID'si girin.",
+          "hermes_session_key": "Bu profil için Hermes uzun süreli belleğini sınırlayan sabit anahtar.",
+          "openclaw_agent_id": "Bu profilin isteklerini yanıtlayan OpenClaw ajanı. OpenClaw'da yapılandırılmış bir ajanla eşleşmelidir. Varsayılan 'main' değeridir.",
+          "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
+          "system_prompt": "Her istekle birlikte OpenClaw'a ek sistem istemi olarak gönderilir, örneğin bir kişilik belirlemek için. Ajanın kendi istemlerini kullanmak için boş bırakın. Sesli uydunun odası otomatik olarak eklenir.",
+          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil)."
+        }
+      },
+      "mcp_server": {
+        "title": "Paylasilan MCP Sunucu Ayarlari",
+        "description": "Bu ayarlar TUM profilleri etkiler. Buradaki degisiklikler her Assist Harness konusma ajanini etkileyecektir.",
+        "data": {
+          "mcp_port": "MCP Sunucu Portu",
+          "search_provider": "Web Arama",
+          "brave_api_key": "Brave Search API Anahtari",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "Ek Izin Verilen IP'ler/Araliklar",
+          "enable_gap_filling": "Akilli Varlik Indeksini Etkinlestir",
+          "max_entities_per_discovery": "Arama Basina Maks Varlik (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "SearXNG örneğinizin adresi, ör. http://192.168.1.10:8888. settings.yml dosyasında JSON çıktısı etkin olmalıdır (search: formats: json)."
+        }
+      },
+      "import_offer": {
+        "title": "Import from MCP Assist",
+        "description": "Found {count} MCP Assist entr(ies). Copy their system settings and every profile, including prompts, model, keys, and Mem0, into Assist Harness? The original integration is not modified or removed.",
+        "data": {
+          "import_existing": "Import existing MCP Assist configuration"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cikarim sunucusuna baglanilamiyor. Calistigini ve erisilebilir oldugunu kontrol edin.",
+      "no_models": "Sunucuda yuklenmis model yok. Lutfen once bir model yukleyin.",
+      "invalid_model": "Belirtilen model sunucuda mevcut degil.",
+      "invalid_port": "Port 1024 ile 65535 arasinda olmalidir.",
+      "invalid_ip": "Gecersiz IP adresi veya CIDR araligi formati. Virgullerle ayrilmis degerler kullanin: 172.30.0.0/16, 192.168.1.100",
+      "profile_name_required": "Profil adi gereklidir.",
+      "invalid_json": "Gecersiz JSON formati. Lutfen MCP sunuculari yapilandirmanizi kontrol edin.",
+      "invalid_api_key": "Gecersiz API anahtari. Lutfen kontrol edin ve tekrar deneyin.",
+      "auth_failed": "Kimlik dogrulama basarisiz oldu. Lutfen API anahtarinizi dogrulayin.",
+      "unknown": "Bilinmeyen bir hata olustu.",
+      "openclaw_not_paired": "Device not yet approved on the OpenClaw server. Please approve it and try again.",
+      "openclaw_connection_failed": "Could not connect to the OpenClaw gateway. Check the host, port, and token."
+    },
+    "abort": {
+      "already_configured": "Bu ada sahip bir profil zaten mevcut. Lutfen farkli bir ad secin.",
+      "import_success": "Imported your MCP Assist profiles into Assist Harness. The original entries were left unchanged."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Profil",
+        "description": "Bu profil için neyi değiştireceğinizi seçin.",
+        "menu_options": {
+          "profile": "Profil ayarları",
+          "profile_tools": "Araçlar"
+        }
+      },
+      "mcp_server": {
+        "title": "Paylasilan MCP Sunucu Ayarlari",
+        "description": "Bu ayarlar TUM profiller tarafindan paylasilir",
+        "data": {
+          "mcp_port": "MCP Sunucu Portu",
+          "search_provider": "Web Arama",
+          "brave_api_key": "Brave Search API Anahtari",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "Ek Izin Verilen IP'ler/Araliklar",
+          "enable_gap_filling": "Akilli Varlik Indeksini Etkinlestir",
+          "max_entities_per_discovery": "Arama Basina Maks Varlik (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "SearXNG örneğinizin adresi, ör. http://192.168.1.10:8888. settings.yml dosyasında JSON çıktısı etkin olmalıdır (search: formats: json)."
+        }
+      },
+      "profile": {
+        "title": "Profil Ayarlari",
+        "description": "{server_info}",
+        "data": {
+          "profile_name": "Profil Adi",
+          "lmstudio_url": "Sunucu URL'si",
+          "api_key": "API Anahtari",
+          "model_name": "Model Adi",
+          "system_prompt": "Sistem Yonergeleri",
+          "technical_prompt": "Teknik Talimatlar",
+          "temperature": "Sicaklik",
+          "max_tokens": "Maksimum Yanit Tokenleri",
+          "max_history": "Maksimum Gecmis Mesajlari",
+          "max_iterations": "Maksimum Arac Yinelemeleri",
+          "control_home_assistant": "Home Assistant'i Kontrol Et",
+          "response_mode": "Yanit Modu",
+          "follow_up_phrases": "Takip Ifadeleri",
+          "end_words": "Konusmayi Bitirme Kelimeleri",
+          "clean_responses": "Sesli Çıktı İçin Yanıtları Temizle",
+          "timeout": "Yanit Zaman Asimi",
+          "thinking_mode": "Düşünme",
+          "debug_mode": "Hata Ayiklama Modu",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "ollama_keep_alive": "Ollama'yi Aktif Tut",
+          "ollama_num_ctx": "Ollama Baglam Penceresi",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "openclaw_agent_id": "Ajan ID'si",
+          "openclaw_session_mode": "Oturum Modu",
+          "openclaw_session_key": "Oturum Anahtarı / Oturum ID'si",
+          "hermes_url": "Hermes Sunucu URL'si",
+          "hermes_session_key": "Bellek Oturum Anahtarı"
+        },
+        "data_description": {
+          "openclaw_session_key": "Yalnızca Oturum Modu 'Fixed' olduğunda kullanılır. 'main' gibi kısa bir anahtar ya da agent:main:main gibi tam bir oturum ID'si girin.",
+          "hermes_session_key": "Bu profil için Hermes uzun süreli belleğini sınırlayan sabit anahtar.",
+          "openclaw_agent_id": "Bu profilin isteklerini yanıtlayan OpenClaw ajanı. OpenClaw'da yapılandırılmış bir ajanla eşleşmelidir. Varsayılan 'main' değeridir.",
+          "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
+          "api_key": "Bulut sağlayıcıları için gereklidir. Yerel sunucular (LM Studio, llama.cpp, Ollama, vLLM) için isteğe bağlıdır: sunucu anahtar istemiyorsa boş bırakın.",
+          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil)."
+        }
+      },
+      "profile_tools": {
+        "title": "Araçlar",
+        "description": "Bu ayarlar tüm profiller tarafından paylaşılır. Kayıtlı değeri korumak için bir sırrı boş bırakın. Bir aracı bu profilden gizlemek için kapatın; sonradan eklenen bir araç, siz kapatana kadar açık kalır.",
+        "data": {
+          "mcp_port": "MCP sunucu bağlantı noktası (tüm profiller paylaşır)",
+          "allowed_ips": "Ek izinli IP'ler/aralıklar (tüm profiller paylaşır)",
+          "enable_gap_filling": "Akıllı varlık dizini (tüm profiller paylaşır)",
+          "max_entities_per_discovery": "Arama başına en fazla varlık (tüm profiller paylaşır)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
+        "sections": {
+          "brave": {
+            "name": "{title_brave}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_2": {
+            "name": "{title_brave_2}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_3": {
+            "name": "{title_brave_3}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_4": {
+            "name": "{title_brave_4}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_5": {
+            "name": "{title_brave_5}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_6": {
+            "name": "{title_brave_6}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "duckduckgo": {
+            "name": "{title_duckduckgo}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_2": {
+            "name": "{title_duckduckgo_2}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_3": {
+            "name": "{title_duckduckgo_3}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_4": {
+            "name": "{title_duckduckgo_4}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_5": {
+            "name": "{title_duckduckgo_5}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_6": {
+            "name": "{title_duckduckgo_6}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "searxng": {
+            "name": "{title_searxng}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_2": {
+            "name": "{title_searxng_2}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_3": {
+            "name": "{title_searxng_3}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_4": {
+            "name": "{title_searxng_4}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_5": {
+            "name": "{title_searxng_5}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_6": {
+            "name": "{title_searxng_6}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "read_url": {
+            "name": "{title_read_url}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_2": {
+            "name": "{title_read_url_2}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_3": {
+            "name": "{title_read_url_3}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_4": {
+            "name": "{title_read_url_4}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_5": {
+            "name": "{title_read_url_5}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_6": {
+            "name": "{title_read_url_6}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "mem0_memory": {
+            "name": "{title_mem0_memory}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_2": {
+            "name": "{title_mem0_memory_2}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_3": {
+            "name": "{title_mem0_memory_3}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_4": {
+            "name": "{title_mem0_memory_4}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_5": {
+            "name": "{title_mem0_memory_5}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_6": {
+            "name": "{title_mem0_memory_6}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "external_mcp": {
+            "name": "{title_external_mcp}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_2": {
+            "name": "{title_external_mcp_2}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_3": {
+            "name": "{title_external_mcp_3}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_4": {
+            "name": "{title_external_mcp_4}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_5": {
+            "name": "{title_external_mcp_5}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_6": {
+            "name": "{title_external_mcp_6}",
+            "data": {
+              "enabled_for_profile": "Bu profil için açık",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Yalnızca bu profil. Aşağıdaki alanlar tüm profiller tarafından paylaşılır.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          }
+        }
+      }
+    },
+    "abort": {},
+    "error": {
+      "duplicate_tool_name": "Bu önek hâlâ başka bir araçla çakışıyor. Başka bir tane seçin.",
+      "invalid_ip": "Gecersiz IP adresi veya CIDR araligi formati. Virgullerle ayrilmis degerler kullanin: 172.30.0.0/16, 192.168.1.100"
+    }
+  },
+  "entity": {
+    "conversation": {
+      "assist_harness": {
+        "name": "{profile_name}"
+      }
+    }
+  },
+  "selector": {
+    "thinking_mode": {
+      "options": {
+        "default": "Sunucu varsayılanı",
+        "off": "Kapalı",
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
+      }
+    }
+  }
+}

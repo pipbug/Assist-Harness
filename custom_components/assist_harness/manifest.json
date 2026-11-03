@@ -1,0 +1,21 @@
+{
+  "domain": "assist_harness",
+  "name": "Assist Harness",
+  "codeowners": [
+    "@pipbug"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "conversation",
+    "recorder"
+  ],
+  "documentation": "https://github.com/pipbug/assist-harness",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/pipbug/assist-harness/issues",
+  "requirements": [
+    "ddgs>=9.0.0",
+    "websockets>=12.0"
+  ],
+  "version": "0.21.3"
+}

@@ -1,0 +1,1092 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuration du profil",
+        "description": "Creez un nouveau profil d'agent avec un nom unique et une personnalite.",
+        "data": {
+          "profile_name": "Nom du profil",
+          "server_type": "Type de serveur"
+        }
+      },
+      "server": {
+        "title": "Configuration du serveur",
+        "description": "Configurez l'URL de votre serveur d'inference et le port du serveur MCP.",
+        "data": {
+          "lmstudio_url": "URL du serveur",
+          "api_key": "Cle API",
+          "mcp_port": "Port du serveur MCP",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "hermes_url": "URL du serveur Hermes"
+        },
+        "data_description": {
+          "api_key": "Obligatoire pour les fournisseurs cloud. Facultative pour les serveurs locaux (LM Studio, llama.cpp, Ollama, vLLM) : laissez vide sauf si le serveur exige une clé."
+        }
+      },
+      "openclaw_pairing": {
+        "title": "OpenClaw Device Pairing",
+        "description": "Your device needs to be approved on the OpenClaw server.\n\nApprove it by running `openclaw devices approve` or using the OpenClaw Control UI, then click Submit.\n\nDevice ID: {device_id}"
+      },
+      "model": {
+        "title": "Modele et instructions",
+        "description": "{server_info}",
+        "data": {
+          "model_name": "Nom du modele",
+          "system_prompt": "Instructions systeme",
+          "technical_prompt": "Instructions techniques"
+        }
+      },
+      "advanced": {
+        "title": "Parametres avances",
+        "description": "{advanced_info}",
+        "data": {
+          "temperature": "Temperature",
+          "max_tokens": "Tokens de reponse maximum",
+          "max_history": "Messages d'historique maximum",
+          "max_iterations": "Iterations d'outils maximum",
+          "control_home_assistant": "Controler Home Assistant",
+          "response_mode": "Mode de reponse",
+          "follow_up_phrases": "Phrases de suivi",
+          "end_words": "Mots de fin de conversation",
+          "clean_responses": "Nettoyer les réponses pour la sortie vocale",
+          "timeout": "Delai de reponse",
+          "thinking_mode": "Réflexion",
+          "debug_mode": "Mode debogage",
+          "ollama_keep_alive": "Maintenir Ollama actif",
+          "ollama_num_ctx": "Fenetre de contexte Ollama",
+          "openclaw_agent_id": "ID de l'agent",
+          "openclaw_session_mode": "Mode de session",
+          "openclaw_session_key": "Clé de session / ID de session",
+          "hermes_session_key": "Clé de session mémoire",
+          "system_prompt": "Instructions systeme"
+        },
+        "data_description": {
+          "openclaw_session_key": "Utilisée uniquement lorsque le Mode de session est 'Fixed'. Saisissez une clé courte comme 'main' ou un ID de session complet comme agent:main:main.",
+          "hermes_session_key": "Clé stable délimitant la mémoire à long terme de Hermes pour ce profil.",
+          "openclaw_agent_id": "L'agent OpenClaw qui répond aux requêtes de ce profil. Il doit correspondre à un agent configuré dans OpenClaw. La valeur par défaut est 'main'.",
+          "openclaw_session_mode": "'Per conversation' donne à chaque conversation Home Assistant sa propre session OpenClaw, où restent les questions de suivi. 'Fixed' envoie toutes les requêtes à l'unique session définie dans Clé de session.",
+          "system_prompt": "Envoyé à OpenClaw avec chaque requête comme instruction système supplémentaire, par exemple pour définir un personnage. Laissez vide pour utiliser les instructions propres à l'agent. La pièce du satellite vocal est ajoutée automatiquement.",
+          "thinking_mode": "Contrôle le raisonnement des modèles qui réfléchissent avant de répondre. Désactivé est le plus rapide pour la voix. Défaut du serveur n'envoie rien. Tous les serveurs ne le respectent pas (peu fiable avec LM Studio)."
+        }
+      },
+      "mcp_server": {
+        "title": "Parametres partages du serveur MCP",
+        "description": "Ces parametres affectent TOUS les profils. Les modifications ici impacteront chaque agent de conversation Assist Harness.",
+        "data": {
+          "mcp_port": "Port du serveur MCP",
+          "search_provider": "Recherche Web",
+          "brave_api_key": "Cle API Brave Search",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "IPs/Plages supplementaires autorisees",
+          "enable_gap_filling": "Activer l'index intelligent des entites",
+          "max_entities_per_discovery": "Max entites par recherche (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "Adresse de votre instance SearXNG, par ex. http://192.168.1.10:8888. La sortie JSON doit être activée dans son settings.yml (search: formats: json)."
+        }
+      },
+      "import_offer": {
+        "title": "Import from MCP Assist",
+        "description": "Found {count} MCP Assist entr(ies). Copy their system settings and every profile, including prompts, model, keys, and Mem0, into Assist Harness? The original integration is not modified or removed.",
+        "data": {
+          "import_existing": "Import existing MCP Assist configuration"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter au serveur d'inference. Assurez-vous qu'il est en cours d'execution et accessible.",
+      "no_models": "Aucun modele charge sur le serveur. Veuillez d'abord charger un modele.",
+      "invalid_model": "Le modele specifie n'est pas disponible sur le serveur.",
+      "invalid_port": "Le port doit etre compris entre 1024 et 65535.",
+      "invalid_ip": "Format d'adresse IP ou de plage CIDR invalide. Utilisez des valeurs separees par des virgules comme : 172.30.0.0/16, 192.168.1.100",
+      "profile_name_required": "Le nom du profil est requis.",
+      "invalid_json": "Format JSON invalide. Veuillez verifier la configuration de vos serveurs MCP.",
+      "invalid_api_key": "Cle API invalide. Veuillez verifier et reessayer.",
+      "auth_failed": "Echec de l'authentification. Veuillez verifier votre cle API.",
+      "unknown": "Une erreur inconnue s'est produite.",
+      "openclaw_not_paired": "Device not yet approved on the OpenClaw server. Please approve it and try again.",
+      "openclaw_connection_failed": "Could not connect to the OpenClaw gateway. Check the host, port, and token."
+    },
+    "abort": {
+      "already_configured": "Un profil avec ce nom existe deja. Veuillez choisir un nom different.",
+      "import_success": "Imported your MCP Assist profiles into Assist Harness. The original entries were left unchanged."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Profil",
+        "description": "Choisissez ce que vous voulez modifier pour ce profil.",
+        "menu_options": {
+          "profile": "Paramètres du profil",
+          "profile_tools": "Outils"
+        }
+      },
+      "mcp_server": {
+        "title": "Parametres partages du serveur MCP",
+        "description": "Ces parametres sont partages entre TOUS les profils",
+        "data": {
+          "mcp_port": "Port du serveur MCP",
+          "search_provider": "Recherche Web",
+          "brave_api_key": "Cle API Brave Search",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "IPs/Plages supplementaires autorisees",
+          "enable_gap_filling": "Activer l'index intelligent des entites",
+          "max_entities_per_discovery": "Max entites par recherche (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "Adresse de votre instance SearXNG, par ex. http://192.168.1.10:8888. La sortie JSON doit être activée dans son settings.yml (search: formats: json)."
+        }
+      },
+      "profile": {
+        "title": "Parametres du profil",
+        "description": "{server_info}",
+        "data": {
+          "profile_name": "Nom du profil",
+          "lmstudio_url": "URL du serveur",
+          "api_key": "Cle API",
+          "model_name": "Nom du modele",
+          "system_prompt": "Instructions systeme",
+          "technical_prompt": "Instructions techniques",
+          "temperature": "Temperature",
+          "max_tokens": "Tokens de reponse maximum",
+          "max_history": "Messages d'historique maximum",
+          "max_iterations": "Iterations d'outils maximum",
+          "control_home_assistant": "Controler Home Assistant",
+          "response_mode": "Mode de reponse",
+          "follow_up_phrases": "Phrases de suivi",
+          "end_words": "Mots de fin de conversation",
+          "clean_responses": "Nettoyer les réponses pour la sortie vocale",
+          "timeout": "Delai de reponse",
+          "thinking_mode": "Réflexion",
+          "debug_mode": "Mode debogage",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "ollama_keep_alive": "Maintenir Ollama actif",
+          "ollama_num_ctx": "Fenetre de contexte Ollama",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "openclaw_agent_id": "ID de l'agent",
+          "openclaw_session_mode": "Mode de session",
+          "openclaw_session_key": "Clé de session / ID de session",
+          "hermes_url": "URL du serveur Hermes",
+          "hermes_session_key": "Clé de session mémoire"
+        },
+        "data_description": {
+          "openclaw_session_key": "Utilisée uniquement lorsque le Mode de session est 'Fixed'. Saisissez une clé courte comme 'main' ou un ID de session complet comme agent:main:main.",
+          "hermes_session_key": "Clé stable délimitant la mémoire à long terme de Hermes pour ce profil.",
+          "openclaw_agent_id": "L'agent OpenClaw qui répond aux requêtes de ce profil. Il doit correspondre à un agent configuré dans OpenClaw. La valeur par défaut est 'main'.",
+          "openclaw_session_mode": "'Per conversation' donne à chaque conversation Home Assistant sa propre session OpenClaw, où restent les questions de suivi. 'Fixed' envoie toutes les requêtes à l'unique session définie dans Clé de session.",
+          "api_key": "Obligatoire pour les fournisseurs cloud. Facultative pour les serveurs locaux (LM Studio, llama.cpp, Ollama, vLLM) : laissez vide sauf si le serveur exige une clé.",
+          "thinking_mode": "Contrôle le raisonnement des modèles qui réfléchissent avant de répondre. Désactivé est le plus rapide pour la voix. Défaut du serveur n'envoie rien. Tous les serveurs ne le respectent pas (peu fiable avec LM Studio)."
+        }
+      },
+      "profile_tools": {
+        "title": "Outils",
+        "description": "Ces réglages sont partagés par tous les profils. Laissez un secret vide pour conserver la valeur déjà enregistrée. Désactivez un outil pour le masquer à ce profil ; un outil ajouté plus tard reste activé jusqu'à ce que vous le désactiviez.",
+        "data": {
+          "mcp_port": "Port du serveur MCP (partagé par tous les profils)",
+          "allowed_ips": "IP ou plages supplémentaires autorisées (partagées par tous les profils)",
+          "enable_gap_filling": "Index d'entités intelligent (partagé par tous les profils)",
+          "max_entities_per_discovery": "Nombre max d'entités par recherche (partagé par tous les profils)"
+        },
+        "data_description": {
+          "mcp_port": "Prend effet après un redémarrage de Home Assistant.",
+          "allowed_ips": "IP ou plages CIDR séparées par des virgules, par exemple 172.30.0.0/16, 192.168.1.100. Appliqué sans redémarrage.",
+          "enable_gap_filling": "Complète les types d'appareils que l'index ne connaît pas. Partagé par tous les profils et appliqué sans redémarrage.",
+          "max_entities_per_discovery": "Nombre d'entités qu'une recherche peut renvoyer (20-500). Partagé par tous les profils et appliqué sans redémarrage."
+        },
+        "sections": {
+          "brave": {
+            "name": "{title_brave}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_2": {
+            "name": "{title_brave_2}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_3": {
+            "name": "{title_brave_3}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_4": {
+            "name": "{title_brave_4}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_5": {
+            "name": "{title_brave_5}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_6": {
+            "name": "{title_brave_6}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "duckduckgo": {
+            "name": "{title_duckduckgo}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_2": {
+            "name": "{title_duckduckgo_2}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_3": {
+            "name": "{title_duckduckgo_3}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_4": {
+            "name": "{title_duckduckgo_4}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_5": {
+            "name": "{title_duckduckgo_5}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_6": {
+            "name": "{title_duckduckgo_6}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "searxng": {
+            "name": "{title_searxng}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_2": {
+            "name": "{title_searxng_2}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_3": {
+            "name": "{title_searxng_3}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_4": {
+            "name": "{title_searxng_4}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_5": {
+            "name": "{title_searxng_5}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_6": {
+            "name": "{title_searxng_6}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "read_url": {
+            "name": "{title_read_url}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_2": {
+            "name": "{title_read_url_2}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_3": {
+            "name": "{title_read_url_3}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_4": {
+            "name": "{title_read_url_4}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_5": {
+            "name": "{title_read_url_5}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_6": {
+            "name": "{title_read_url_6}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "mem0_memory": {
+            "name": "{title_mem0_memory}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_2": {
+            "name": "{title_mem0_memory_2}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_3": {
+            "name": "{title_mem0_memory_3}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_4": {
+            "name": "{title_mem0_memory_4}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_5": {
+            "name": "{title_mem0_memory_5}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_6": {
+            "name": "{title_mem0_memory_6}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "external_mcp": {
+            "name": "{title_external_mcp}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_2": {
+            "name": "{title_external_mcp_2}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_3": {
+            "name": "{title_external_mcp_3}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_4": {
+            "name": "{title_external_mcp_4}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_5": {
+            "name": "{title_external_mcp_5}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_6": {
+            "name": "{title_external_mcp_6}",
+            "data": {
+              "enabled_for_profile": "Activé pour ce profil",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "Ce profil seulement. Les champs ci-dessous sont partagés par tous les profils.",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          }
+        }
+      }
+    },
+    "abort": {},
+    "error": {
+      "duplicate_tool_name": "Ce préfixe entre encore en conflit avec un autre outil. Choisissez-en un autre.",
+      "invalid_ip": "Format d'adresse IP ou de plage CIDR invalide. Utilisez des valeurs separees par des virgules comme : 172.30.0.0/16, 192.168.1.100"
+    }
+  },
+  "entity": {
+    "conversation": {
+      "assist_harness": {
+        "name": "{profile_name}"
+      }
+    }
+  },
+  "selector": {
+    "thinking_mode": {
+      "options": {
+        "default": "Défaut du serveur",
+        "off": "Désactivé",
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
+      }
+    }
+  }
+}

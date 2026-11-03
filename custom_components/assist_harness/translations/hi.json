@@ -1,0 +1,1092 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "प्रोफ़ाइल सेटअप",
+        "description": "एक अद्वितीय नाम और व्यक्तित्व के साथ नई एजेंट प्रोफ़ाइल बनाएं।",
+        "data": {
+          "profile_name": "प्रोफ़ाइल नाम",
+          "server_type": "सर्वर प्रकार"
+        }
+      },
+      "server": {
+        "title": "सर्वर कॉन्फ़िगरेशन",
+        "description": "अपने इन्फ़रेंस सर्वर URL और MCP सर्वर पोर्ट कॉन्फ़िगर करें।",
+        "data": {
+          "lmstudio_url": "सर्वर URL",
+          "api_key": "API कुंजी",
+          "mcp_port": "MCP सर्वर पोर्ट",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "hermes_url": "Hermes सर्वर URL"
+        },
+        "data_description": {
+          "api_key": "क्लाउड प्रदाताओं के लिए आवश्यक। लोकल सर्वर (LM Studio, llama.cpp, Ollama, vLLM) के लिए वैकल्पिक: जब तक सर्वर को कुंजी की ज़रूरत न हो, इसे खाली छोड़ें।"
+        }
+      },
+      "openclaw_pairing": {
+        "title": "OpenClaw Device Pairing",
+        "description": "Your device needs to be approved on the OpenClaw server.\n\nApprove it by running `openclaw devices approve` or using the OpenClaw Control UI, then click Submit.\n\nDevice ID: {device_id}"
+      },
+      "model": {
+        "title": "मॉडल और प्रॉम्प्ट",
+        "description": "{server_info}",
+        "data": {
+          "model_name": "मॉडल नाम",
+          "system_prompt": "सिस्टम प्रॉम्प्ट",
+          "technical_prompt": "तकनीकी निर्देश"
+        }
+      },
+      "advanced": {
+        "title": "उन्नत सेटिंग्स",
+        "description": "{advanced_info}",
+        "data": {
+          "temperature": "तापमान",
+          "max_tokens": "अधिकतम प्रतिक्रिया टोकन",
+          "max_history": "अधिकतम इतिहास संदेश",
+          "max_iterations": "अधिकतम टूल पुनरावृत्तियां",
+          "control_home_assistant": "Home Assistant नियंत्रण",
+          "response_mode": "प्रतिक्रिया मोड",
+          "follow_up_phrases": "अनुवर्ती वाक्यांश",
+          "end_words": "बातचीत समाप्त करने के शब्द",
+          "clean_responses": "वॉइस आउटपुट के लिए साफ़ प्रतिक्रियाएँ",
+          "timeout": "प्रतिक्रिया समय समाप्त",
+          "thinking_mode": "सोचना",
+          "debug_mode": "डीबग मोड",
+          "ollama_keep_alive": "Ollama जीवित रखें",
+          "ollama_num_ctx": "Ollama संदर्भ विंडो",
+          "openclaw_agent_id": "एजेंट ID",
+          "openclaw_session_mode": "सत्र मोड",
+          "openclaw_session_key": "सत्र कुंजी / सत्र ID",
+          "hermes_session_key": "मेमोरी सत्र कुंजी",
+          "system_prompt": "सिस्टम प्रॉम्प्ट"
+        },
+        "data_description": {
+          "openclaw_session_key": "केवल तब उपयोग होता है जब सत्र मोड 'Fixed' हो। 'main' जैसी छोटी कुंजी या agent:main:main जैसा पूरा सत्र ID दर्ज करें।",
+          "hermes_session_key": "इस प्रोफ़ाइल के लिए Hermes की दीर्घकालिक मेमोरी को सीमित करने वाली स्थिर कुंजी।",
+          "openclaw_agent_id": "वह OpenClaw एजेंट जो इस प्रोफ़ाइल के अनुरोधों का उत्तर देता है। यह OpenClaw में कॉन्फ़िगर किए गए एजेंट से मेल खाना चाहिए। डिफ़ॉल्ट 'main' है।",
+          "openclaw_session_mode": "'Per conversation' हर Home Assistant बातचीत को अपना OpenClaw सत्र देता है, और अनुवर्ती प्रश्न उसी में रहते हैं। 'Fixed' सभी अनुरोधों को सत्र कुंजी में तय किए गए एक ही सत्र में भेजता है।",
+          "system_prompt": "हर अनुरोध के साथ OpenClaw को अतिरिक्त सिस्टम प्रॉम्प्ट के रूप में भेजा जाता है, उदाहरण के लिए कोई व्यक्तित्व तय करने के लिए। एजेंट के अपने प्रॉम्प्ट इस्तेमाल करने के लिए इसे खाली छोड़ें। वॉइस सैटेलाइट का कमरा अपने आप जुड़ जाता है।",
+          "thinking_mode": "उन मॉडलों की तर्क प्रक्रिया नियंत्रित करता है जो जवाब देने से पहले सोचते हैं। आवाज़ के लिए बंद सबसे तेज़ है। सर्वर डिफ़ॉल्ट कुछ नहीं भेजता। हर सर्वर इसे नहीं मानता (LM Studio में अविश्वसनीय)।"
+        }
+      },
+      "mcp_server": {
+        "title": "साझा MCP सर्वर सेटिंग्स",
+        "description": "⚠️ ये सेटिंग्स सभी प्रोफ़ाइलों को प्रभावित करती हैं। यहां किए गए परिवर्तन हर Assist Harness वार्तालाप एजेंट को प्रभावित करेंगे।",
+        "data": {
+          "mcp_port": "MCP सर्वर पोर्ट",
+          "search_provider": "वेब खोज",
+          "brave_api_key": "Brave Search API कुंजी",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "अतिरिक्त अनुमत IP/रेंज",
+          "enable_gap_filling": "स्मार्ट एंटिटी इंडेक्स सक्षम करें",
+          "max_entities_per_discovery": "प्रति खोज अधिकतम एंटिटी (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "आपके SearXNG इंस्टेंस का पता, जैसे http://192.168.1.10:8888। इसकी settings.yml में JSON आउटपुट चालू होना चाहिए (search: formats: json)।"
+        }
+      },
+      "import_offer": {
+        "title": "Import from MCP Assist",
+        "description": "Found {count} MCP Assist entr(ies). Copy their system settings and every profile, including prompts, model, keys, and Mem0, into Assist Harness? The original integration is not modified or removed.",
+        "data": {
+          "import_existing": "Import existing MCP Assist configuration"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "इन्फ़रेंस सर्वर से कनेक्ट नहीं हो सकता। सुनिश्चित करें कि यह चल रहा है और पहुंच योग्य है।",
+      "no_models": "सर्वर पर कोई मॉडल लोड नहीं है। कृपया पहले एक मॉडल लोड करें।",
+      "invalid_model": "निर्दिष्ट मॉडल सर्वर पर उपलब्ध नहीं है।",
+      "invalid_port": "पोर्ट 1024 और 65535 के बीच होना चाहिए।",
+      "invalid_ip": "अमान्य IP पता या CIDR रेंज प्रारूप। अल्पविराम से अलग किए गए मान का उपयोग करें जैसे: 172.30.0.0/16, 192.168.1.100",
+      "profile_name_required": "प्रोफ़ाइल नाम आवश्यक है।",
+      "invalid_json": "अमान्य JSON प्रारूप। कृपया अपना MCP सर्वर कॉन्फ़िगरेशन जांचें।",
+      "invalid_api_key": "अमान्य API कुंजी। कृपया जांचें और पुनः प्रयास करें।",
+      "auth_failed": "प्रमाणीकरण विफल। कृपया अपनी API कुंजी सत्यापित करें।",
+      "unknown": "एक अज्ञात त्रुटि हुई।",
+      "openclaw_not_paired": "Device not yet approved on the OpenClaw server. Please approve it and try again.",
+      "openclaw_connection_failed": "Could not connect to the OpenClaw gateway. Check the host, port, and token."
+    },
+    "abort": {
+      "already_configured": "इस नाम की प्रोफ़ाइल पहले से मौजूद है। कृपया कोई अलग नाम चुनें।",
+      "import_success": "Imported your MCP Assist profiles into Assist Harness. The original entries were left unchanged."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "प्रोफ़ाइल",
+        "description": "चुनें कि इस प्रोफ़ाइल में क्या बदलना है।",
+        "menu_options": {
+          "profile": "प्रोफ़ाइल सेटिंग्स",
+          "profile_tools": "उपकरण"
+        }
+      },
+      "mcp_server": {
+        "title": "साझा MCP सर्वर सेटिंग्स",
+        "description": "⚠️ ये सेटिंग्स सभी प्रोफ़ाइलों में साझा की जाती हैं",
+        "data": {
+          "mcp_port": "MCP सर्वर पोर्ट",
+          "search_provider": "वेब खोज",
+          "brave_api_key": "Brave Search API कुंजी",
+          "searxng_url": "SearXNG URL",
+          "allowed_ips": "अतिरिक्त अनुमत IP/रेंज",
+          "enable_gap_filling": "स्मार्ट एंटिटी इंडेक्स सक्षम करें",
+          "max_entities_per_discovery": "प्रति खोज अधिकतम एंटिटी (20-500)"
+        },
+        "data_description": {
+          "searxng_url": "आपके SearXNG इंस्टेंस का पता, जैसे http://192.168.1.10:8888। इसकी settings.yml में JSON आउटपुट चालू होना चाहिए (search: formats: json)।"
+        }
+      },
+      "profile": {
+        "title": "प्रोफ़ाइल सेटिंग्स",
+        "description": "{server_info}",
+        "data": {
+          "profile_name": "प्रोफ़ाइल नाम",
+          "lmstudio_url": "सर्वर URL",
+          "api_key": "API कुंजी",
+          "model_name": "मॉडल नाम",
+          "system_prompt": "सिस्टम प्रॉम्प्ट",
+          "technical_prompt": "तकनीकी निर्देश",
+          "temperature": "तापमान",
+          "max_tokens": "अधिकतम प्रतिक्रिया टोकन",
+          "max_history": "अधिकतम इतिहास संदेश",
+          "max_iterations": "अधिकतम टूल पुनरावृत्तियां",
+          "control_home_assistant": "Home Assistant नियंत्रण",
+          "response_mode": "प्रतिक्रिया मोड",
+          "follow_up_phrases": "अनुवर्ती वाक्यांश",
+          "end_words": "बातचीत समाप्त करने के शब्द",
+          "clean_responses": "वॉइस आउटपुट के लिए साफ़ प्रतिक्रियाएँ",
+          "timeout": "प्रतिक्रिया समय समाप्त",
+          "thinking_mode": "सोचना",
+          "debug_mode": "डीबग मोड",
+          "mem0_enabled": "Mem0 long-term memory",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID",
+          "ollama_keep_alive": "Ollama जीवित रखें",
+          "ollama_num_ctx": "Ollama संदर्भ विंडो",
+          "openclaw_host": "Gateway Host",
+          "openclaw_port": "Gateway Port",
+          "openclaw_token": "Gateway Token",
+          "openclaw_use_ssl": "Use SSL/TLS",
+          "openclaw_agent_id": "एजेंट ID",
+          "openclaw_session_mode": "सत्र मोड",
+          "openclaw_session_key": "सत्र कुंजी / सत्र ID",
+          "hermes_url": "Hermes सर्वर URL",
+          "hermes_session_key": "मेमोरी सत्र कुंजी"
+        },
+        "data_description": {
+          "openclaw_session_key": "केवल तब उपयोग होता है जब सत्र मोड 'Fixed' हो। 'main' जैसी छोटी कुंजी या agent:main:main जैसा पूरा सत्र ID दर्ज करें।",
+          "hermes_session_key": "इस प्रोफ़ाइल के लिए Hermes की दीर्घकालिक मेमोरी को सीमित करने वाली स्थिर कुंजी।",
+          "openclaw_agent_id": "वह OpenClaw एजेंट जो इस प्रोफ़ाइल के अनुरोधों का उत्तर देता है। यह OpenClaw में कॉन्फ़िगर किए गए एजेंट से मेल खाना चाहिए। डिफ़ॉल्ट 'main' है।",
+          "openclaw_session_mode": "'Per conversation' हर Home Assistant बातचीत को अपना OpenClaw सत्र देता है, और अनुवर्ती प्रश्न उसी में रहते हैं। 'Fixed' सभी अनुरोधों को सत्र कुंजी में तय किए गए एक ही सत्र में भेजता है।",
+          "api_key": "क्लाउड प्रदाताओं के लिए आवश्यक। लोकल सर्वर (LM Studio, llama.cpp, Ollama, vLLM) के लिए वैकल्पिक: जब तक सर्वर को कुंजी की ज़रूरत न हो, इसे खाली छोड़ें।",
+          "thinking_mode": "उन मॉडलों की तर्क प्रक्रिया नियंत्रित करता है जो जवाब देने से पहले सोचते हैं। आवाज़ के लिए बंद सबसे तेज़ है। सर्वर डिफ़ॉल्ट कुछ नहीं भेजता। हर सर्वर इसे नहीं मानता (LM Studio में अविश्वसनीय)।"
+        }
+      },
+      "profile_tools": {
+        "title": "उपकरण",
+        "description": "ये सेटिंग हर प्रोफ़ाइल में साझा होती हैं। सहेजा मान रखने के लिए रहस्य खाली छोड़ें। इस प्रोफ़ाइल से छिपाने के लिए उपकरण बंद करें; बाद में जोड़ा उपकरण तब तक चालू रहता है जब तक आप उसे बंद न करें।",
+        "data": {
+          "mcp_port": "MCP सर्वर पोर्ट (सभी प्रोफ़ाइल साझा करती हैं)",
+          "allowed_ips": "अतिरिक्त अनुमत IP/रेंज (सभी प्रोफ़ाइल साझा करती हैं)",
+          "enable_gap_filling": "स्मार्ट एंटिटी इंडेक्स (सभी प्रोफ़ाइल साझा करती हैं)",
+          "max_entities_per_discovery": "प्रति खोज अधिकतम एंटिटी (सभी प्रोफ़ाइल साझा करती हैं)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
+        "sections": {
+          "brave": {
+            "name": "{title_brave}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_2": {
+            "name": "{title_brave_2}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_3": {
+            "name": "{title_brave_3}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_4": {
+            "name": "{title_brave_4}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_5": {
+            "name": "{title_brave_5}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "brave_6": {
+            "name": "{title_brave_6}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "api_key": "API key"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "api_key": "From the provider dashboard."
+            }
+          },
+          "duckduckgo": {
+            "name": "{title_duckduckgo}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_2": {
+            "name": "{title_duckduckgo_2}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_3": {
+            "name": "{title_duckduckgo_3}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_4": {
+            "name": "{title_duckduckgo_4}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_5": {
+            "name": "{title_duckduckgo_5}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "duckduckgo_6": {
+            "name": "{title_duckduckgo_6}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "searxng": {
+            "name": "{title_searxng}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_2": {
+            "name": "{title_searxng_2}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_3": {
+            "name": "{title_searxng_3}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_4": {
+            "name": "{title_searxng_4}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_5": {
+            "name": "{title_searxng_5}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "searxng_6": {
+            "name": "{title_searxng_6}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address."
+            }
+          },
+          "read_url": {
+            "name": "{title_read_url}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_2": {
+            "name": "{title_read_url_2}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_3": {
+            "name": "{title_read_url_3}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_4": {
+            "name": "{title_read_url_4}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_5": {
+            "name": "{title_read_url_5}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "read_url_6": {
+            "name": "{title_read_url_6}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide."
+            }
+          },
+          "mem0_memory": {
+            "name": "{title_mem0_memory}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_2": {
+            "name": "{title_mem0_memory_2}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_3": {
+            "name": "{title_mem0_memory_3}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_4": {
+            "name": "{title_mem0_memory_4}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_5": {
+            "name": "{title_mem0_memory_5}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "mem0_memory_6": {
+            "name": "{title_mem0_memory_6}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "mem0_enabled": "Enable Mem0",
+              "mem0_url": "Mem0 server URL",
+              "mem0_api_key": "Mem0 API key",
+              "mem0_user_id": "Mem0 user ID"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+              "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+              "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+              "mem0_user_id": "Memories are stored for this user."
+            }
+          },
+          "external_mcp": {
+            "name": "{title_external_mcp}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_2": {
+            "name": "{title_external_mcp_2}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_3": {
+            "name": "{title_external_mcp_3}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_4": {
+            "name": "{title_external_mcp_4}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_5": {
+            "name": "{title_external_mcp_5}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          },
+          "external_mcp_6": {
+            "name": "{title_external_mcp_6}",
+            "data": {
+              "enabled_for_profile": "इस प्रोफ़ाइल के लिए सक्षम",
+              "name": "Name",
+              "prefix": "Tool name prefix",
+              "url": "URL",
+              "transport": "Transport",
+              "bearer_token": "Bearer token",
+              "headers": "Extra headers"
+            },
+            "data_description": {
+              "enabled_for_profile": "केवल इस प्रोफ़ाइल के लिए। नीचे के फ़ील्ड हर प्रोफ़ाइल में साझा हैं।",
+              "name": "Shown in the tool list.",
+              "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+              "url": "Server address.",
+              "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+              "bearer_token": "Optional. Sent as Authorization: Bearer.",
+              "headers": "Optional. One 'Name: value' header per line."
+            }
+          }
+        }
+      }
+    },
+    "abort": {},
+    "error": {
+      "duplicate_tool_name": "वह उपसर्ग अभी भी किसी अन्य उपकरण से टकराता है। कोई दूसरा चुनें।",
+      "invalid_ip": "अमान्य IP पता या CIDR रेंज प्रारूप। अल्पविराम से अलग किए गए मान का उपयोग करें जैसे: 172.30.0.0/16, 192.168.1.100"
+    }
+  },
+  "entity": {
+    "conversation": {
+      "assist_harness": {
+        "name": "{profile_name}"
+      }
+    }
+  },
+  "selector": {
+    "thinking_mode": {
+      "options": {
+        "default": "सर्वर डिफ़ॉल्ट",
+        "off": "बंद",
+        "low": "कम",
+        "medium": "मध्यम",
+        "high": "उच्च"
+      }
+    },
+    "tool_transport": {
+      "options": {
+        "streamable_http": "Streamable HTTP",
+        "sse": "Server-sent events (SSE)"
+      }
+    }
+  },
+  "config_subentries": {
+    "brave": {
+      "entry_type": "Brave Search",
+      "initiate_flow": {
+        "user": "Add Brave Search",
+        "reconfigure": "Reconfigure Brave Search"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        },
+        "reconfigure": {
+          "title": "Brave Search",
+          "description": "Search the web with the Brave Search API. The API key is stored for every profile.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "api_key": "API key"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "api_key": "From the Brave Search API dashboard. Stored as a secret."
+          }
+        }
+      }
+    },
+    "duckduckgo": {
+      "entry_type": "DuckDuckGo",
+      "initiate_flow": {
+        "user": "Add DuckDuckGo",
+        "reconfigure": "Reconfigure DuckDuckGo"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "DuckDuckGo",
+          "description": "Search the web with DuckDuckGo. No API key is required.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "searxng": {
+      "entry_type": "SearXNG",
+      "initiate_flow": {
+        "user": "Add SearXNG",
+        "reconfigure": "Reconfigure SearXNG"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        },
+        "reconfigure": {
+          "title": "SearXNG",
+          "description": "Search the web with your own SearXNG server. Add another instance for a second URL.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "SearXNG URL"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Address of your SearXNG instance, for example http://192.168.1.10:8888. JSON output must be enabled in its settings."
+          }
+        }
+      }
+    },
+    "read_url": {
+      "entry_type": "Read URL",
+      "initiate_flow": {
+        "user": "Add Read URL",
+        "reconfigure": "Reconfigure Read URL"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        },
+        "reconfigure": {
+          "title": "Read URL",
+          "description": "Read a web page and return its text. This tool is independent of web search.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out."
+          }
+        }
+      }
+    },
+    "mem0_memory": {
+      "entry_type": "Mem0 memory",
+      "initiate_flow": {
+        "user": "Add Mem0 memory",
+        "reconfigure": "Reconfigure Mem0 memory"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        },
+        "reconfigure": {
+          "title": "Mem0 memory",
+          "description": "Long-term memory for the assistant. Use a self-hosted Mem0 server, or https://api.mem0.ai for the hosted platform.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "mem0_enabled": "Enable Mem0",
+            "mem0_url": "Mem0 server URL",
+            "mem0_api_key": "Mem0 API key",
+            "mem0_user_id": "Mem0 user ID"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+            "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+            "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+            "mem0_user_id": "Memories are stored for this user."
+          }
+        }
+      }
+    },
+    "external_mcp": {
+      "entry_type": "External MCP server",
+      "initiate_flow": {
+        "user": "Add external MCP server",
+        "reconfigure": "Reconfigure external MCP server"
+      },
+      "abort": {
+        "already_configured": "This tool is already added. Reconfigure the existing one, or remove it first.",
+        "duplicate_tool_name": "That prefix still collides with another tool. Choose a different prefix."
+      },
+      "step": {
+        "user": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        },
+        "reconfigure": {
+          "title": "External MCP server",
+          "description": "Connect to another MCP server and proxy its tools. If that server is down, only its tools are hidden.",
+          "data": {
+            "name": "Name",
+            "prefix": "Tool name prefix",
+            "url": "Server URL",
+            "transport": "Transport",
+            "bearer_token": "Bearer token",
+            "headers": "Extra headers"
+          },
+          "data_description": {
+            "name": "Shown in the tool list on the integration page.",
+            "prefix": "Optional. Added to the start of each tool name so two instances do not collide. A trailing underscore is added if you leave one out.",
+            "url": "Streamable HTTP endpoint, or the SSE endpoint when transport is SSE.",
+            "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+            "bearer_token": "Optional. Sent as Authorization: Bearer.",
+            "headers": "Optional. One 'Name: value' header per line."
+          }
+        }
+      }
+    }
+  }
+}

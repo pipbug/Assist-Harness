@@ -1,0 +1,2297 @@
+"""Config flow for Assist Harness integration."""
+
+from __future__ import annotations
+
+import asyncio
+import ipaddress
+import logging
+from typing import Any
+
+import aiohttp
+import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import FlowResult, section
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+    BooleanSelector,
+)
+
+from .localization import get_language_instruction, get_follow_up_phrases, get_end_words
+from .tool_flow import async_get_supported_subentry_types
+
+from .const import (
+    DOMAIN,
+    SYSTEM_ENTRY_UNIQUE_ID,
+    CONF_PROFILE_NAME,
+    CONF_SERVER_TYPE,
+    CONF_API_KEY,
+    CONF_LMSTUDIO_URL,
+    CONF_MODEL_NAME,
+    CONF_MCP_PORT,
+    CONF_AUTO_START,
+    CONF_SYSTEM_PROMPT,
+    CONF_TECHNICAL_PROMPT,
+    CONF_CONTROL_HA,
+    CONF_FOLLOW_UP_MODE,
+    CONF_RESPONSE_MODE,
+    CONF_TEMPERATURE,
+    CONF_MAX_TOKENS,
+    CONF_MAX_HISTORY,
+    CONF_MAX_ITERATIONS,
+    CONF_DEBUG_MODE,
+    CONF_THINKING_MODE,
+    DEFAULT_THINKING_MODE,
+    THINKING_MODES,
+    CONF_ALLOWED_IPS,
+    CONF_ENABLE_GAP_FILLING,
+    CONF_MAX_ENTITIES_PER_DISCOVERY,
+    DEFAULT_MAX_ENTITIES_PER_DISCOVERY,
+    CONF_OLLAMA_KEEP_ALIVE,
+    CONF_OLLAMA_NUM_CTX,
+    CONF_FOLLOW_UP_PHRASES,
+    CONF_END_WORDS,
+    CONF_CLEAN_RESPONSES,
+    CONF_TIMEOUT,
+    SERVER_TYPE_LMSTUDIO,
+    SERVER_TYPE_LLAMACPP,
+    SERVER_TYPE_OLLAMA,
+    SERVER_TYPE_OPENAI,
+    SERVER_TYPE_GEMINI,
+    SERVER_TYPE_ANTHROPIC,
+    SERVER_TYPE_OPENROUTER,
+    SERVER_TYPE_OPENCLAW,
+    SERVER_TYPE_HERMES,
+    SERVER_TYPE_VLLM,
+    DEFAULT_SERVER_TYPE,
+    DEFAULT_LMSTUDIO_URL,
+    DEFAULT_LLAMACPP_URL,
+    DEFAULT_OLLAMA_URL,
+    CONF_OPENCLAW_HOST,
+    CONF_OPENCLAW_PORT,
+    CONF_OPENCLAW_TOKEN,
+    CONF_OPENCLAW_USE_SSL,
+    CONF_OPENCLAW_SESSION_KEY,
+    CONF_OPENCLAW_AGENT_ID,
+    CONF_OPENCLAW_SESSION_MODE,
+    OPENCLAW_SESSION_MODE_PER_CONVERSATION,
+    OPENCLAW_SESSION_MODE_FIXED,
+    DEFAULT_OPENCLAW_HOST,
+    DEFAULT_OPENCLAW_PORT,
+    DEFAULT_OPENCLAW_USE_SSL,
+    DEFAULT_OPENCLAW_SESSION_KEY,
+    DEFAULT_OPENCLAW_AGENT_ID,
+    DEFAULT_OPENCLAW_SESSION_MODE,
+    CONF_HERMES_URL,
+    CONF_HERMES_SESSION_KEY,
+    DEFAULT_HERMES_URL,
+    DEFAULT_HERMES_SESSION_KEY,
+    DEFAULT_HERMES_MODEL,
+    DEFAULT_VLLM_URL,
+    DEFAULT_MCP_PORT,
+    DEFAULT_MODEL_NAME,
+    DEFAULT_SYSTEM_PROMPT,
+    DEFAULT_TECHNICAL_PROMPT,
+    DEFAULT_CONTROL_HA,
+    DEFAULT_FOLLOW_UP_MODE,
+    DEFAULT_RESPONSE_MODE,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_MAX_HISTORY,
+    DEFAULT_MAX_ITERATIONS,
+    DEFAULT_DEBUG_MODE,
+    DEFAULT_ALLOWED_IPS,
+    DEFAULT_ENABLE_GAP_FILLING,
+    DEFAULT_OLLAMA_KEEP_ALIVE,
+    DEFAULT_OLLAMA_NUM_CTX,
+    DEFAULT_FOLLOW_UP_PHRASES,
+    DEFAULT_END_WORDS,
+    DEFAULT_CLEAN_RESPONSES,
+    DEFAULT_TIMEOUT,
+    DEFAULT_API_KEY,
+    OPENAI_BASE_URL,
+    GEMINI_BASE_URL,
+    ANTHROPIC_BASE_URL,
+    OPENROUTER_BASE_URL,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def fetch_models_from_lmstudio(
+    hass: HomeAssistant, url: str, api_key: str = ""
+) -> list[str]:
+    """Fetch available models from local inference server (LM Studio/Ollama)."""
+    _LOGGER.info("🌐 FETCH: Starting model fetch from %s", url)
+    try:
+        # Small delay to ensure server is ready
+        await asyncio.sleep(0.5)
+
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            _LOGGER.info("📡 FETCH: Sending request to %s/v1/models", url)
+            headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+            async with session.get(f"{url}/v1/models", headers=headers) as resp:
+                _LOGGER.info("📥 FETCH: Got response with status %d", resp.status)
+                if resp.status != 200:
+                    _LOGGER.warning("⚠️ FETCH: Non-200 status, returning empty list")
+                    return []
+
+                models = await resp.json()
+                model_ids = [m.get("id", "") for m in models.get("data", [])]
+                sorted_models = sorted(model_ids) if model_ids else []
+                _LOGGER.info(
+                    "✨ FETCH: Returning %d sorted models: %s",
+                    len(sorted_models),
+                    sorted_models,
+                )
+                return sorted_models
+    except Exception as err:
+        _LOGGER.error("💥 FETCH: Exception during fetch: %s", err, exc_info=True)
+        return []
+
+
+async def fetch_models_from_openai(
+    hass: HomeAssistant,
+    api_key: str,
+    base_url: str = OPENAI_BASE_URL
+) -> list[str]:
+    """Fetch available models from OpenAI API."""
+    _LOGGER.info("🌐 FETCH: Starting OpenAI model fetch")
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        # Only include Authorization header if API key looks valid
+        # Some custom OpenAI-compatible services don't require authentication
+        if api_key and len(api_key) > 5 and not api_key.lower() in ["none", "null", "fake", "na", "n/a"]:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            _LOGGER.info("📡 FETCH: Requesting OpenAI models")
+            async with session.get(
+                f"{base_url}/v1/models", headers=headers
+            ) as resp:
+                _LOGGER.info("📥 FETCH: OpenAI response status %d", resp.status)
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    _LOGGER.warning(
+                        "⚠️ FETCH: OpenAI API error %d: %s",
+                        resp.status,
+                        error_text[:200],
+                    )
+                    return []
+
+                data = await resp.json()
+                # Filter for chat models only (exclude embeddings, whisper, etc.)
+                all_models = [m.get("id", "") for m in data.get("data", [])]
+
+                # Only filter for GPT models when using official OpenAI URL
+                # Custom OpenAI-compatible services may use different naming schemes
+                if base_url == OPENAI_BASE_URL:
+                    chat_models = [m for m in all_models if m.startswith("gpt-")]
+                else:
+                    # For custom URLs, return all models (user's service defines what's available)
+                    chat_models = all_models
+
+                sorted_models = sorted(chat_models, reverse=True) if chat_models else []
+                _LOGGER.info("✨ FETCH: Found %d OpenAI chat models", len(sorted_models))
+                return sorted_models
+    except Exception as err:
+        _LOGGER.error("💥 FETCH: OpenAI fetch failed: %s", err)
+        return []
+
+
+async def fetch_models_from_gemini(hass: HomeAssistant, api_key: str) -> list[str]:
+    """Fetch available models from Gemini API."""
+    _LOGGER.info("🌐 FETCH: Starting Gemini model fetch")
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            _LOGGER.info("📡 FETCH: Requesting Gemini models")
+            # Gemini uses native API for model listing, not OpenAI-compatible endpoint
+            # API key goes in query parameter for native API
+            async with session.get(
+                f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+            ) as resp:
+                _LOGGER.info("📥 FETCH: Gemini response status %d", resp.status)
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    _LOGGER.warning(
+                        "⚠️ FETCH: Gemini API error %d: %s",
+                        resp.status,
+                        error_text[:200],
+                    )
+                    return []
+
+                data = await resp.json()
+                # Gemini native API response format: {"models": [{"name": "models/gemini-..."}]}
+                all_models = []
+                for model in data.get("models", []):
+                    # Extract model ID from "models/gemini-pro" format
+                    model_name = model.get("name", "")
+                    if model_name.startswith("models/"):
+                        model_id = model_name.replace("models/", "")
+                        all_models.append(model_id)
+
+                # Filter for gemini models only
+                gemini_models = [m for m in all_models if "gemini" in m.lower()]
+                sorted_models = (
+                    sorted(gemini_models, reverse=True) if gemini_models else []
+                )
+                _LOGGER.info("✨ FETCH: Found %d Gemini models", len(sorted_models))
+                return sorted_models
+    except Exception as err:
+        _LOGGER.error("💥 FETCH: Gemini fetch failed: %s", err)
+        return []
+
+
+async def fetch_models_from_openrouter(hass: HomeAssistant, api_key: str) -> list[str]:
+    """Fetch available models from OpenRouter API."""
+    _LOGGER.info("🌐 FETCH: Starting OpenRouter model fetch")
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://github.com/pipbug/assist-harness",
+            "X-Title": "Assist Harness for Home Assistant",
+        }
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            _LOGGER.info("📡 FETCH: Requesting OpenRouter models")
+            async with session.get(
+                f"{OPENROUTER_BASE_URL}/v1/models", headers=headers
+            ) as resp:
+                _LOGGER.info("📥 FETCH: OpenRouter response status %d", resp.status)
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    _LOGGER.warning(
+                        "⚠️ FETCH: OpenRouter API error %d: %s",
+                        resp.status,
+                        error_text[:200],
+                    )
+                    return []
+
+                data = await resp.json()
+                # OpenRouter returns models in OpenAI-compatible format
+                all_models = [m.get("id", "") for m in data.get("data", [])]
+                # Filter out empty strings and sort
+                models = [m for m in all_models if m]
+                sorted_models = sorted(models) if models else []
+                _LOGGER.info("✨ FETCH: Found %d OpenRouter models", len(sorted_models))
+                return sorted_models
+    except Exception as err:
+        _LOGGER.error("💥 FETCH: OpenRouter fetch failed: %s", err)
+        return []
+
+
+async def fetch_models_from_anthropic(hass: HomeAssistant, api_key: str) -> list[str]:
+    """Fetch available models from Anthropic API."""
+    _LOGGER.info("🌐 FETCH: Starting Anthropic model fetch")
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        }
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            _LOGGER.info("📡 FETCH: Requesting Anthropic models")
+            async with session.get(
+                f"{ANTHROPIC_BASE_URL}/v1/models", headers=headers
+            ) as resp:
+                _LOGGER.info("📥 FETCH: Anthropic response status %d", resp.status)
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    _LOGGER.warning(
+                        "⚠️ FETCH: Anthropic API error %d: %s",
+                        resp.status,
+                        error_text[:200],
+                    )
+                    return []
+
+                data = await resp.json()
+                # Anthropic returns models in OpenAI-style format: {"data": [{"id": ...}]}
+                all_models = [m.get("id", "") for m in data.get("data", [])]
+                # Filter out empty strings and sort
+                models = [m for m in all_models if m]
+                sorted_models = sorted(models, reverse=True) if models else []
+                _LOGGER.info("✨ FETCH: Found %d Anthropic models", len(sorted_models))
+                return sorted_models
+    except Exception as err:
+        _LOGGER.error("💥 FETCH: Anthropic fetch failed: %s", err)
+        return []
+
+
+async def validate_hermes_connection(
+    hass: HomeAssistant, url: str, api_key: str
+) -> str | None:
+    """Test connection to a Hermes Agent server via /v1/capabilities.
+
+    Returns an error key ("invalid_api_key"/"cannot_connect") or None on success.
+    """
+    url = url.rstrip("/")
+    _LOGGER.info("🌐 HERMES: Testing connection to %s/v1/capabilities", url)
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(
+                f"{url}/v1/capabilities", headers=headers
+            ) as resp:
+                _LOGGER.info("📥 HERMES: Capabilities response status %d", resp.status)
+                if resp.status in (401, 403):
+                    return "invalid_api_key"
+                if resp.status != 200:
+                    return "cannot_connect"
+                return None
+    except Exception as err:
+        _LOGGER.error("💥 HERMES: Connection test failed: %s", err)
+        return "cannot_connect"
+
+
+def validate_allowed_ips(allowed_ips_str: str) -> tuple[bool, str]:
+    """Validate comma-separated list of IP addresses and CIDR ranges.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        If valid, error_message is empty string
+    """
+    if not allowed_ips_str or not allowed_ips_str.strip():
+        # Empty is valid (no additional IPs)
+        return True, ""
+
+    # Parse comma-separated values
+    ip_list = [ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()]
+
+    for ip_entry in ip_list:
+        try:
+            # Try parsing as IP network (handles both individual IPs and CIDR)
+            ipaddress.ip_network(ip_entry, strict=False)
+        except ValueError:
+            # Invalid IP or CIDR format
+            return False, f"Invalid IP address or CIDR range: {ip_entry}"
+
+    return True, ""
+
+
+SHARED_MCP_KEYS = (
+    CONF_MCP_PORT,
+    CONF_ALLOWED_IPS,
+    CONF_ENABLE_GAP_FILLING,
+    CONF_MAX_ENTITIES_PER_DISCOVERY,
+)
+
+
+def shared_mcp_values(entry) -> dict[str, Any]:
+    """Current shared server settings, options first, then data, then defaults."""
+    options = entry.options if entry is not None else {}
+    data = entry.data if entry is not None else {}
+
+    def pick(key: str, default: Any) -> Any:
+        if key in options:
+            return options[key]
+        if key in data:
+            return data[key]
+        return default
+
+    return {
+        CONF_MCP_PORT: pick(CONF_MCP_PORT, DEFAULT_MCP_PORT),
+        CONF_ALLOWED_IPS: pick(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS),
+        CONF_ENABLE_GAP_FILLING: pick(CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING),
+        CONF_MAX_ENTITIES_PER_DISCOVERY: pick(
+            CONF_MAX_ENTITIES_PER_DISCOVERY, DEFAULT_MAX_ENTITIES_PER_DISCOVERY
+        ),
+    }
+
+
+def normalize_shared_mcp(values: dict[str, Any]) -> dict[str, Any]:
+    """Compare server settings with one type per field."""
+    current = shared_mcp_values(None)
+    current.update(values or {})
+    allowed = current.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
+    return {
+        CONF_MCP_PORT: int(current.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)),
+        CONF_ALLOWED_IPS: "" if allowed is None else str(allowed),
+        CONF_ENABLE_GAP_FILLING: bool(
+            current.get(CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING)
+        ),
+        CONF_MAX_ENTITIES_PER_DISCOVERY: int(
+            current.get(CONF_MAX_ENTITIES_PER_DISCOVERY, DEFAULT_MAX_ENTITIES_PER_DISCOVERY)
+        ),
+    }
+
+
+def shared_mcp_schema(current: dict[str, Any] | None = None) -> vol.Schema:
+    """Schema for the system entry's server settings form.
+
+    The profile Tools form appends these fields after the tool sections.
+    """
+    current = normalize_shared_mcp(current or {})
+    return vol.Schema(
+        {
+            vol.Required(CONF_MCP_PORT, default=current[CONF_MCP_PORT]): vol.Coerce(int),
+            vol.Optional(CONF_ALLOWED_IPS, default=current[CONF_ALLOWED_IPS]): str,
+            vol.Optional(
+                CONF_ENABLE_GAP_FILLING, default=current[CONF_ENABLE_GAP_FILLING]
+            ): bool,
+            vol.Optional(
+                CONF_MAX_ENTITIES_PER_DISCOVERY,
+                default=current[CONF_MAX_ENTITIES_PER_DISCOVERY],
+            ): vol.All(vol.Coerce(int), vol.Range(min=20, max=500)),
+        }
+    )
+
+
+def shared_mcp_field_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    """Validation shared with the system entry's server settings form."""
+    allowed = user_input.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
+    if not isinstance(allowed, str):
+        allowed = "" if allowed is None else str(allowed)
+    is_valid, error_msg = validate_allowed_ips(allowed)
+    if not is_valid:
+        _LOGGER.warning("Invalid allowed IPs: %s", error_msg)
+        return {CONF_ALLOWED_IPS: "invalid_ip"}
+    return {}
+
+
+def save_shared_mcp_settings(hass: HomeAssistant, user_input: dict[str, Any]) -> bool:
+    """Store changed server settings on the system entry. Returns True if written.
+
+    The values are written to the entry options and to data. Data is what the
+    system entry form already saves, and several readers look there; options
+    are preferred when both are set, so they are kept identical. Nothing is
+    written when the values already match. The running server keeps its port.
+    Allowed IPs are reread in place.
+    """
+    from . import get_system_entry
+
+    system = get_system_entry(hass)
+    if system is None:
+        return False
+    new = normalize_shared_mcp(user_input)
+    if new == normalize_shared_mcp(shared_mcp_values(system)):
+        return False
+    hass.config_entries.async_update_entry(
+        system,
+        data={**system.data, **new},
+        options={**system.options, **new},
+    )
+    server = hass.data.get(DOMAIN, {}).get("shared_mcp_server")
+    if server is not None:
+        # The listening port stays as it was started. Allowed IPs are reread.
+        server.refresh_allowed_ips()
+    return True
+
+
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_PROFILE_NAME): str,
+        vol.Required(CONF_SERVER_TYPE, default=DEFAULT_SERVER_TYPE): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    {"value": "lmstudio", "label": "LM Studio"},
+                    {"value": "llamacpp", "label": "llama.cpp"},
+                    {"value": "ollama", "label": "Ollama"},
+                    {"value": "openai", "label": "OpenAI"},
+                    {"value": "gemini", "label": "Google Gemini"},
+                    {"value": "anthropic", "label": "Anthropic (Claude)"},
+                    {"value": "openrouter", "label": "OpenRouter"},
+                    {"value": "openclaw", "label": "OpenClaw"},
+                    {"value": "hermes", "label": "Hermes Agent"},
+                    {"value": "vllm", "label": "vLLM"},
+                ],
+                mode=SelectSelectorMode.LIST,
+            )
+        ),
+    }
+)
+
+STEP_MCP_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_MCP_PORT, default=DEFAULT_MCP_PORT): vol.Coerce(int),
+        vol.Required(CONF_AUTO_START, default=True): bool,
+    }
+)
+
+
+async def validate_lmstudio_connection(
+    hass: HomeAssistant, data: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate LM Studio connection."""
+    url = data[CONF_LMSTUDIO_URL].rstrip("/")
+    model_name = data[CONF_MODEL_NAME]
+
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # Test models endpoint
+            async with session.get(f"{url}/v1/models") as resp:
+                if resp.status != 200:
+                    raise CannotConnect(
+                        f"LM Studio not responding (status {resp.status})"
+                    )
+
+                models = await resp.json()
+                model_ids = [m.get("id", "") for m in models.get("data", [])]
+
+                if not model_ids:
+                    raise NoModelsLoaded("No models loaded in LM Studio")
+
+                # Check if specified model exists
+                if model_name not in model_ids:
+                    _LOGGER.warning(
+                        "Model '%s' not found. Available models: %s",
+                        model_name,
+                        model_ids,
+                    )
+
+            # Test chat completions endpoint
+            test_payload = {
+                "model": model_name,
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 1,
+                "stream": False,
+            }
+
+            async with session.post(
+                f"{url}/v1/chat/completions", json=test_payload
+            ) as resp:
+                if resp.status != 200:
+                    raise InvalidModel(
+                        f"Model '{model_name}' not working (status {resp.status})"
+                    )
+
+    except aiohttp.ClientError as err:
+        raise CannotConnect(f"Failed to connect to LM Studio: {err}") from err
+
+    return {"title": f"LM Studio ({model_name})"}
+
+
+def _with_thinking_field(schema_dict: dict, server_type: str, current: str) -> dict:
+    """Add the thinking mode dropdown just before Debug Mode.
+
+    Hermes runs its own agent, and Anthropic's compatible endpoint has no
+    equivalent request field, so neither gets the setting.
+    """
+    if server_type in (SERVER_TYPE_HERMES, SERVER_TYPE_ANTHROPIC):
+        return schema_dict
+    field = vol.Required(CONF_THINKING_MODE, default=current)
+    selector = SelectSelector(
+        SelectSelectorConfig(
+            options=THINKING_MODES,
+            mode=SelectSelectorMode.DROPDOWN,
+            translation_key="thinking_mode",
+        )
+    )
+    result = {}
+    for key, value in schema_dict.items():
+        if str(key) == CONF_DEBUG_MODE:
+            result[field] = selector
+        result[key] = value
+    if field not in result:
+        result[field] = selector
+    return result
+
+
+def _openclaw_session_schema(
+    agent_id: str, session_mode: str, session_key: str, system_prompt: str
+) -> dict:
+    """Build the OpenClaw agent, session and prompt fields."""
+    return {
+        vol.Optional(CONF_OPENCLAW_AGENT_ID, default=agent_id): str,
+        vol.Required(CONF_OPENCLAW_SESSION_MODE, default=session_mode): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    {
+                        "value": OPENCLAW_SESSION_MODE_PER_CONVERSATION,
+                        "label": "Per conversation",
+                    },
+                    {"value": OPENCLAW_SESSION_MODE_FIXED, "label": "Fixed"},
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        ),
+        vol.Optional(CONF_OPENCLAW_SESSION_KEY, default=session_key): str,
+        vol.Optional(
+            CONF_SYSTEM_PROMPT, description={"suggested_value": system_prompt}
+        ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True)),
+    }
+
+
+class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Assist Harness."""
+
+    VERSION = 3
+    MINOR_VERSION = 2
+
+    def __init__(self) -> None:
+        """Initialize."""
+        self.step1_data: dict[str, Any] = {}
+        self.step2_data: dict[str, Any] = {}
+        self.step3_data: dict[str, Any] = {}
+        self.step4_data: dict[str, Any] = {}
+        self._import_checked = False
+
+    def _offer_mcp_assist_import(self) -> bool:
+        """Offer a one-time import when this integration has no entries yet."""
+        if self.hass.config_entries.async_entries(DOMAIN):
+            return False
+        return bool(self.hass.config_entries.async_entries("mcp_assist"))
+
+    async def async_step_import_offer(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask to copy existing MCP Assist entries. Never changes those entries."""
+        if user_input is not None:
+            if user_input.get("import_existing"):
+                from .migration import async_import_mcp_assist
+
+                await async_import_mcp_assist(self.hass)
+                return self.async_abort(reason="import_success")
+            return await self.async_step_user()
+
+        count = len(self.hass.config_entries.async_entries("mcp_assist"))
+        return self.async_show_form(
+            step_id="import_offer",
+            data_schema=vol.Schema(
+                {vol.Required("import_existing", default=True): bool}
+            ),
+            description_placeholders={"count": str(count)},
+        )
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle step 1 - profile name and server type."""
+        errors: dict[str, str] = {}
+
+        if (
+            user_input is None
+            and not self._import_checked
+            and self._offer_mcp_assist_import()
+        ):
+            self._import_checked = True
+            return await self.async_step_import_offer()
+
+        if user_input is not None:
+            # Validate profile name is not empty
+            profile_name = user_input.get(CONF_PROFILE_NAME, "").strip()
+            if not profile_name:
+                errors[CONF_PROFILE_NAME] = "profile_name_required"
+            else:
+                # Store data and move to step 2
+                self.step1_data = user_input
+                return await self.async_step_server()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=STEP_USER_DATA_SCHEMA,
+            errors=errors,
+        )
+
+    async def async_step_server(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle step 2 - server configuration (URL for local, API key for cloud)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            server_type = self.step1_data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+            if server_type == SERVER_TYPE_HERMES:
+                # Hermes Agent - test connection/auth before proceeding
+                hermes_url = user_input.get(CONF_HERMES_URL, DEFAULT_HERMES_URL)
+                api_key = user_input.get(CONF_API_KEY, "")
+                error = await validate_hermes_connection(
+                    self.hass, hermes_url, api_key
+                )
+                if error:
+                    errors["base"] = error
+                else:
+                    self.step2_data = user_input
+                    return await self.async_step_model()
+            else:
+                # Store data and move to next step
+                self.step2_data = user_input
+                if server_type == SERVER_TYPE_OPENCLAW:
+                    return await self.async_step_openclaw_pairing()
+                return await self.async_step_model()
+
+        # Get server type from step 1 to build dynamic schema
+        server_type = self.step1_data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+
+        # Build schema based on server type
+        if server_type == SERVER_TYPE_OPENCLAW:
+            # OpenClaw Gateway - host, port, token, SSL
+            server_schema = vol.Schema(
+                {
+                    vol.Required(CONF_OPENCLAW_HOST, default=DEFAULT_OPENCLAW_HOST): str,
+                    vol.Required(CONF_OPENCLAW_PORT, default=DEFAULT_OPENCLAW_PORT): vol.Coerce(int),
+                    vol.Required(CONF_OPENCLAW_TOKEN): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                    vol.Required(CONF_OPENCLAW_USE_SSL, default=DEFAULT_OPENCLAW_USE_SSL): BooleanSelector(),
+                }
+            )
+        elif server_type == SERVER_TYPE_HERMES:
+            # Hermes Agent - server URL + optional API key
+            server_schema = vol.Schema(
+                {
+                    vol.Required(CONF_HERMES_URL, default=DEFAULT_HERMES_URL): str,
+                    vol.Optional(CONF_API_KEY): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            )
+        elif server_type in [
+            SERVER_TYPE_LMSTUDIO,
+            SERVER_TYPE_LLAMACPP,
+            SERVER_TYPE_OLLAMA,
+            SERVER_TYPE_VLLM,
+        ]:
+            # Local servers - show URL field
+            if server_type == SERVER_TYPE_OLLAMA:
+                default_url = DEFAULT_OLLAMA_URL
+            elif server_type == SERVER_TYPE_LLAMACPP:
+                default_url = DEFAULT_LLAMACPP_URL
+            elif server_type == SERVER_TYPE_VLLM:
+                default_url = DEFAULT_VLLM_URL
+            else:
+                default_url = DEFAULT_LMSTUDIO_URL
+
+            server_schema = vol.Schema(
+                {
+                    vol.Required(CONF_LMSTUDIO_URL, default=default_url): str,
+                    vol.Optional(CONF_API_KEY): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            )
+        elif server_type == SERVER_TYPE_OPENAI:
+            # OpenAI - hybrid like OpenClaw (URL + API key)
+            # Pre-fill with official OpenAI URL but allow users to edit for custom endpoints
+            server_schema = vol.Schema(
+                {
+                    vol.Required(CONF_LMSTUDIO_URL, default=OPENAI_BASE_URL): str,
+                    vol.Required(CONF_API_KEY): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            )
+        else:
+            # Other cloud providers (Gemini, Anthropic, OpenRouter) - API key only
+            server_schema = vol.Schema(
+                {
+                    vol.Required(CONF_API_KEY): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            )
+
+        return self.async_show_form(
+            step_id="server",
+            data_schema=server_schema,
+            errors=errors,
+        )
+
+    async def async_step_openclaw_pairing(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle OpenClaw device pairing step."""
+        errors: dict[str, str] = {}
+
+        from .openclaw_client import (
+            OpenClawClient, OpenClawDeviceAuth, DevicePairingRequiredError,
+            OpenClawConnectionError, OpenClawAuthError,
+        )
+
+        # Get or create device auth
+        if "openclaw_device_auth" not in self.hass.data.get(DOMAIN, {}):
+            self.hass.data.setdefault(DOMAIN, {})
+            device_auth = OpenClawDeviceAuth(self.hass)
+            await device_auth.async_load()
+            self.hass.data[DOMAIN]["openclaw_device_auth"] = device_auth
+
+        device_auth = self.hass.data[DOMAIN]["openclaw_device_auth"]
+        device_id = device_auth.device_id
+
+        if user_input is not None or not hasattr(self, "_pairing_attempted"):
+            # Attempt connection to test pairing
+            self._pairing_attempted = True
+            client = OpenClawClient(
+                host=self.step2_data.get(CONF_OPENCLAW_HOST, DEFAULT_OPENCLAW_HOST),
+                port=self.step2_data.get(CONF_OPENCLAW_PORT, DEFAULT_OPENCLAW_PORT),
+                token=self.step2_data.get(CONF_OPENCLAW_TOKEN, ""),
+                use_ssl=self.step2_data.get(CONF_OPENCLAW_USE_SSL, DEFAULT_OPENCLAW_USE_SSL),
+                device_auth=device_auth,
+                timeout=30,
+            )
+
+            try:
+                await client.connect()
+                await client.disconnect()
+                # Device is approved — proceed to model step
+                return await self.async_step_model()
+            except DevicePairingRequiredError:
+                errors["base"] = "openclaw_not_paired"
+            except OpenClawAuthError as err:
+                _LOGGER.error("OpenClaw auth error: %s", err)
+                errors["base"] = "openclaw_connection_failed"
+            except OpenClawConnectionError as err:
+                _LOGGER.error("OpenClaw connection error: %s", err)
+                errors["base"] = "openclaw_connection_failed"
+            except Exception as err:
+                _LOGGER.error("OpenClaw unexpected error: %s: %s", type(err).__name__, err)
+                errors["base"] = "openclaw_connection_failed"
+
+        return self.async_show_form(
+            step_id="openclaw_pairing",
+            data_schema=vol.Schema({}),
+            errors=errors,
+            description_placeholders={
+                "device_id": device_id,
+            },
+        )
+
+    async def async_step_model(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle step 3 - model selection and prompts."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            # Hermes Agent manages its own prompts - store empty defaults
+            server_type = self.step1_data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+            if server_type == SERVER_TYPE_HERMES:
+                if CONF_SYSTEM_PROMPT not in user_input:
+                    user_input[CONF_SYSTEM_PROMPT] = ""
+                if CONF_TECHNICAL_PROMPT not in user_input:
+                    user_input[CONF_TECHNICAL_PROMPT] = ""
+
+            # Store data and move to step 4 (advanced)
+            self.step3_data = user_input
+            return await self.async_step_advanced()
+
+        # Get server type to determine model source
+        server_type = self.step1_data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+        models = []
+
+        # OpenClaw doesn't need model/prompt selection — skip straight to advanced
+        if server_type == SERVER_TYPE_OPENCLAW:
+            self.step3_data = {
+                CONF_MODEL_NAME: "",
+                CONF_SYSTEM_PROMPT: "",
+                CONF_TECHNICAL_PROMPT: "",
+            }
+            return await self.async_step_advanced()
+        elif server_type == SERVER_TYPE_HERMES:
+            # Hermes Agent - OpenAI-style /v1/models with Bearer auth
+            server_url = self.step2_data.get(
+                CONF_HERMES_URL, DEFAULT_HERMES_URL
+            ).rstrip("/")
+            api_key = self.step2_data.get(CONF_API_KEY, "")
+            _LOGGER.debug("Fetching Hermes models from %s", server_url)
+            models = await fetch_models_from_openai(self.hass, api_key, server_url)
+            _LOGGER.debug("Fetched %d Hermes models: %s", len(models), models)
+            # No error on failure - fall back to free-text default model
+        elif server_type in [
+            SERVER_TYPE_LMSTUDIO,
+            SERVER_TYPE_LLAMACPP,
+            SERVER_TYPE_OLLAMA,
+            SERVER_TYPE_VLLM,
+        ]:
+            # Local servers - fetch models from API
+            server_url = self.step2_data.get(
+                CONF_LMSTUDIO_URL, DEFAULT_LMSTUDIO_URL
+            ).rstrip("/")
+            _LOGGER.debug("Attempting to fetch models from %s", server_url)
+            models = await fetch_models_from_lmstudio(
+                self.hass, server_url, self.step2_data.get(CONF_API_KEY, "")
+            )
+            _LOGGER.debug("Fetched %d models: %s", len(models), models)
+            # Show error if fetch failed
+            if not models:
+                errors["base"] = "cannot_connect"
+        elif server_type == SERVER_TYPE_OPENAI:
+            # OpenAI - fetch models from API with authentication
+            api_key = self.step2_data.get(CONF_API_KEY, "")
+            # Get custom URL from step 2 (uses same CONF_LMSTUDIO_URL field as local servers)
+            base_url = self.step2_data.get(CONF_LMSTUDIO_URL, OPENAI_BASE_URL).rstrip("/")
+            _LOGGER.debug("Fetching OpenAI models from %s", base_url)
+            models = await fetch_models_from_openai(self.hass, api_key, base_url)
+            _LOGGER.debug("Fetched %d OpenAI models: %s", len(models), models)
+            # Show error if fetch failed
+            if not models:
+                errors["base"] = "invalid_api_key"
+        elif server_type == SERVER_TYPE_GEMINI:
+            # Gemini - fetch models from API with authentication
+            api_key = self.step2_data.get(CONF_API_KEY, "")
+            _LOGGER.debug("Fetching Gemini models with API key")
+            models = await fetch_models_from_gemini(self.hass, api_key)
+            _LOGGER.debug("Fetched %d Gemini models: %s", len(models), models)
+            # Show error if fetch failed
+            if not models:
+                errors["base"] = "invalid_api_key"
+        elif server_type == SERVER_TYPE_OPENROUTER:
+            # OpenRouter - fetch models from API with authentication
+            api_key = self.step2_data.get(CONF_API_KEY, "")
+            _LOGGER.debug("Fetching OpenRouter models with API key")
+            models = await fetch_models_from_openrouter(self.hass, api_key)
+            _LOGGER.debug("Fetched %d OpenRouter models: %s", len(models), models)
+            # Show error if fetch failed
+            if not models:
+                errors["base"] = "invalid_api_key"
+        elif server_type == SERVER_TYPE_ANTHROPIC:
+            # Anthropic - fetch models from API with authentication
+            api_key = self.step2_data.get(CONF_API_KEY, "")
+            _LOGGER.debug("Fetching Anthropic models with API key")
+            models = await fetch_models_from_anthropic(self.hass, api_key)
+            _LOGGER.debug("Fetched %d Anthropic models: %s", len(models), models)
+            # Show error if fetch failed (free-text model entry still available)
+            if not models:
+                errors["base"] = "invalid_api_key"
+
+        # Build dynamic schema based on whether models were fetched
+        if server_type == SERVER_TYPE_HERMES:
+            # Hermes Agent manages its own prompts - only model selection needed
+            if models:
+                model_schema = vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_MODEL_NAME, default=DEFAULT_HERMES_MODEL
+                        ): SelectSelector(
+                            SelectSelectorConfig(
+                                options=models,
+                                mode=SelectSelectorMode.DROPDOWN,
+                                custom_value=True,
+                            )
+                        ),
+                    }
+                )
+            else:
+                model_schema = vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_MODEL_NAME, default=DEFAULT_HERMES_MODEL
+                        ): str,
+                    }
+                )
+        elif models:
+            # Show dropdown with available models (custom_value allows free text input)
+            _LOGGER.info("Showing model dropdown with %d models", len(models))
+            model_schema = vol.Schema(
+                {
+                    vol.Required(CONF_MODEL_NAME): SelectSelector(
+                        SelectSelectorConfig(
+                            options=models,
+                            mode=SelectSelectorMode.DROPDOWN,
+                            custom_value=True,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_SYSTEM_PROMPT,
+                        default=get_language_instruction(self.hass.config.language)
+                        or DEFAULT_SYSTEM_PROMPT,
+                    ): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True)
+                    ),
+                    vol.Required(
+                        CONF_TECHNICAL_PROMPT, default=DEFAULT_TECHNICAL_PROMPT
+                    ): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True)
+                    ),
+                }
+            )
+        else:
+            # Show text input as fallback
+            _LOGGER.info("No models fetched, showing text input")
+            model_schema = vol.Schema(
+                {
+                    vol.Required(CONF_MODEL_NAME, default=DEFAULT_MODEL_NAME): str,
+                    vol.Required(
+                        CONF_SYSTEM_PROMPT,
+                        default=get_language_instruction(self.hass.config.language)
+                        or DEFAULT_SYSTEM_PROMPT,
+                    ): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True)
+                    ),
+                    vol.Required(
+                        CONF_TECHNICAL_PROMPT, default=DEFAULT_TECHNICAL_PROMPT
+                    ): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True)
+                    ),
+                }
+            )
+
+        return self.async_show_form(
+            step_id="model",
+            data_schema=model_schema,
+            errors=errors,
+            description_placeholders={
+                "server_info": "Select a model and customize the system prompt. Models are automatically loaded from your server."
+            },
+        )
+
+    async def async_step_advanced(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle step 4 - advanced settings."""
+        errors: dict[str, str] = {}
+
+        # Get server type to determine which fields to show
+        server_type = self.step1_data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+
+        if user_input is not None:
+            # For OpenClaw/Hermes, set defaults for LLM-specific fields (not shown in UI)
+            if server_type in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+                user_input[CONF_TEMPERATURE] = DEFAULT_TEMPERATURE
+                user_input[CONF_MAX_TOKENS] = DEFAULT_MAX_TOKENS
+                user_input[CONF_MAX_HISTORY] = DEFAULT_MAX_HISTORY
+                user_input[CONF_MAX_ITERATIONS] = DEFAULT_MAX_ITERATIONS
+                if CONF_TIMEOUT not in user_input:
+                    user_input[CONF_TIMEOUT] = 60
+
+            # Validate MCP port
+            mcp_port = user_input.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)
+            if not 1024 <= mcp_port <= 65535:
+                errors[CONF_MCP_PORT] = "invalid_port"
+
+            # Validate allowed IPs
+            allowed_ips_str = user_input.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
+            is_valid, error_msg = validate_allowed_ips(allowed_ips_str)
+            if not is_valid:
+                errors[CONF_ALLOWED_IPS] = "invalid_ip"
+                _LOGGER.warning("Invalid allowed IPs: %s", error_msg)
+
+            if not errors:
+                # Check if this is the first profile (MCP server doesn't exist yet)
+                is_first_profile = "shared_mcp_server" not in self.hass.data.get(
+                    DOMAIN, {}
+                )
+
+                if is_first_profile:
+                    # First profile - store step 4 data and proceed to MCP server config
+                    self.step4_data = user_input
+                    return await self.async_step_mcp_server()
+                else:
+                    # Subsequent profile - use existing shared MCP server settings
+                    # Get MCP settings from shared server
+                    mcp_port = self.hass.data[DOMAIN].get("mcp_port", DEFAULT_MCP_PORT)
+
+                    # Get search provider from any existing entry (they all share it)
+                    # Find first entry to copy shared settings from
+                    existing_entry = None
+                    for entry in self.hass.config_entries.async_entries(DOMAIN):
+                        existing_entry = entry
+                        break
+
+                    # Copy shared settings from existing entry
+                    shared_settings = {}
+                    if existing_entry:
+                        shared_settings = {
+                            CONF_MCP_PORT: existing_entry.data.get(
+                                CONF_MCP_PORT, mcp_port
+                            ),
+                            CONF_ALLOWED_IPS: existing_entry.data.get(
+                                CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS
+                            ),
+                            CONF_ENABLE_GAP_FILLING: existing_entry.data.get(
+                                CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING
+                            ),
+                        }
+
+                    # Combine data from steps 1-4 + shared settings
+                    combined_data = {
+                        **self.step1_data,
+                        **self.step2_data,
+                        **self.step3_data,
+                        **user_input,  # Step 4 data
+                        **shared_settings,  # Copy from existing entry
+                    }
+
+                    # Create config entry (same as before)
+                    profile_name = combined_data[CONF_PROFILE_NAME]
+                    server_type = combined_data.get(
+                        CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE
+                    )
+
+                    server_display_map = {
+                        SERVER_TYPE_LMSTUDIO: "LM Studio",
+                        SERVER_TYPE_LLAMACPP: "llama.cpp",
+                        SERVER_TYPE_OLLAMA: "Ollama",
+                        SERVER_TYPE_OPENAI: "OpenAI",
+                        SERVER_TYPE_GEMINI: "Gemini",
+                        SERVER_TYPE_ANTHROPIC: "Claude",
+                        SERVER_TYPE_OPENROUTER: "OpenRouter",
+                        SERVER_TYPE_OPENCLAW: "OpenClaw",
+                        SERVER_TYPE_HERMES: "Hermes Agent",
+                        SERVER_TYPE_VLLM: "vLLM",
+                    }
+                    server_display = server_display_map.get(server_type, "LM Studio")
+
+                    unique_id = f"{DOMAIN}_{server_type}_{profile_name.lower().replace(' ', '_')}"
+                    await self.async_set_unique_id(unique_id)
+                    self._abort_if_unique_id_configured()
+
+                    return self.async_create_entry(
+                        title=f"{server_display} - {profile_name}",
+                        data=combined_data,
+                    )
+
+        # Gemini requires temperature=1.0 for optimal performance (Google's guidance)
+        default_temp = 1.0 if server_type == SERVER_TYPE_GEMINI else DEFAULT_TEMPERATURE
+
+        # Build schema based on server type
+        if server_type in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            # OpenClaw/Hermes - show conversation settings but hide LLM-specific fields
+            if server_type == SERVER_TYPE_HERMES:
+                session_key_conf = CONF_HERMES_SESSION_KEY
+                session_key_default = DEFAULT_HERMES_SESSION_KEY
+            else:
+                session_key_conf = CONF_OPENCLAW_SESSION_KEY
+                session_key_default = DEFAULT_OPENCLAW_SESSION_KEY
+            advanced_schema_dict = {
+                vol.Required(CONF_CONTROL_HA, default=DEFAULT_CONTROL_HA): bool,
+            }
+            if server_type == SERVER_TYPE_OPENCLAW:
+                advanced_schema_dict.update(
+                    _openclaw_session_schema(
+                        DEFAULT_OPENCLAW_AGENT_ID,
+                        DEFAULT_OPENCLAW_SESSION_MODE,
+                        DEFAULT_OPENCLAW_SESSION_KEY,
+                        "",
+                    )
+                )
+            else:
+                advanced_schema_dict[
+                    vol.Optional(session_key_conf, default=session_key_default)
+                ] = str
+            advanced_schema_dict.update({
+                vol.Required(
+                    CONF_RESPONSE_MODE, default=DEFAULT_RESPONSE_MODE
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
+                            {"value": "none", "label": "None"},
+                            {"value": "default", "label": "Smart"},
+                            {"value": "always", "label": "Always"},
+                        ],
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(
+                    CONF_FOLLOW_UP_PHRASES,
+                    default=get_follow_up_phrases(self.hass.config.language),
+                ): TextSelector(TextSelectorConfig(multiline=True)),
+                vol.Optional(
+                    CONF_END_WORDS, default=get_end_words(self.hass.config.language)
+                ): TextSelector(TextSelectorConfig(multiline=True)),
+                vol.Optional(
+                    CONF_CLEAN_RESPONSES, default=DEFAULT_CLEAN_RESPONSES
+                ): bool,
+                vol.Required(CONF_TIMEOUT, default=60): vol.All(
+                    vol.Coerce(int), vol.Range(min=5, max=300)
+                ),
+                vol.Required(CONF_DEBUG_MODE, default=DEFAULT_DEBUG_MODE): bool,
+            })
+        else:
+            # Other servers - show all fields
+            advanced_schema_dict = {
+                vol.Required(CONF_TEMPERATURE, default=default_temp): vol.All(
+                    vol.Coerce(float), vol.Range(min=0.0, max=1.0)
+                ),
+                vol.Required(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): vol.Coerce(
+                    int
+                ),
+            }
+
+            # Add Ollama-specific fields in correct position (after Max Tokens)
+            if server_type == SERVER_TYPE_OLLAMA:
+                advanced_schema_dict[
+                    vol.Optional(CONF_OLLAMA_NUM_CTX, default=DEFAULT_OLLAMA_NUM_CTX)
+                ] = vol.Coerce(int)
+                advanced_schema_dict[
+                    vol.Optional(
+                        CONF_OLLAMA_KEEP_ALIVE, default=DEFAULT_OLLAMA_KEEP_ALIVE
+                    )
+                ] = str
+
+            # Continue with remaining fields
+            advanced_schema_dict.update(
+                {
+                    vol.Required(
+                        CONF_MAX_HISTORY, default=DEFAULT_MAX_HISTORY
+                    ): vol.Coerce(int),
+                    vol.Required(CONF_CONTROL_HA, default=DEFAULT_CONTROL_HA): bool,
+                    vol.Required(
+                        CONF_MAX_ITERATIONS, default=DEFAULT_MAX_ITERATIONS
+                    ): vol.Coerce(int),
+                    vol.Required(
+                        CONF_RESPONSE_MODE, default=DEFAULT_RESPONSE_MODE
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "none", "label": "None"},
+                                {"value": "default", "label": "Smart"},
+                                {"value": "always", "label": "Always"},
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_FOLLOW_UP_PHRASES,
+                        default=get_follow_up_phrases(self.hass.config.language),
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
+                    vol.Optional(
+                        CONF_END_WORDS, default=get_end_words(self.hass.config.language)
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
+                    vol.Optional(
+                        CONF_CLEAN_RESPONSES, default=DEFAULT_CLEAN_RESPONSES
+                    ): bool,
+                    vol.Required(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.All(
+                        vol.Coerce(int), vol.Range(min=5, max=300)
+                    ),
+                    vol.Required(CONF_DEBUG_MODE, default=DEFAULT_DEBUG_MODE): bool,
+                }
+            )
+
+        advanced_schema = vol.Schema(
+            _with_thinking_field(
+                advanced_schema_dict, server_type, DEFAULT_THINKING_MODE
+            )
+        )
+
+        # Set description based on server type
+        if server_type == SERVER_TYPE_OPENCLAW:
+            description_placeholders = {
+                "advanced_info": "OpenClaw manages temperature, token limits, history, and tool iterations internally. Only essential settings are shown."
+            }
+        elif server_type == SERVER_TYPE_HERMES:
+            description_placeholders = {
+                "advanced_info": "Hermes Agent manages temperature, token limits, history, and tool iterations internally. Only essential settings are shown."
+            }
+        else:
+            description_placeholders = {
+                "advanced_info": "Configure temperature, token limits, and other advanced options."
+            }
+
+        return self.async_show_form(
+            step_id="advanced",
+            data_schema=advanced_schema,
+            errors=errors,
+            description_placeholders=description_placeholders,
+        )
+
+    async def async_step_mcp_server(self, user_input=None) -> FlowResult:
+        """Handle step 5 - shared MCP server settings (first profile only)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            # Validate MCP port
+            mcp_port = user_input.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)
+            if not 1024 <= mcp_port <= 65535:
+                errors[CONF_MCP_PORT] = "invalid_port"
+
+            # Validate allowed IPs
+            allowed_ips_str = user_input.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
+            is_valid, error_msg = validate_allowed_ips(allowed_ips_str)
+            if not is_valid:
+                errors[CONF_ALLOWED_IPS] = "invalid_ip"
+                _LOGGER.warning("Invalid allowed IPs: %s", error_msg)
+
+            if not errors:
+                # Create/update system entry with shared settings
+                from . import get_system_entry
+
+                system_entry = get_system_entry(self.hass)
+
+                if not system_entry:
+                    # Create system entry with shared settings
+                    await self.hass.config_entries.flow.async_init(
+                        DOMAIN, context={"source": "system"}, data=user_input
+                    )
+                    _LOGGER.info(
+                        "Created system entry with shared MCP settings from initial setup"
+                    )
+                else:
+                    # Update existing system entry
+                    self.hass.config_entries.async_update_entry(
+                        system_entry, data={**system_entry.data, **user_input}
+                    )
+                    _LOGGER.info(
+                        "Updated existing system entry with shared MCP settings"
+                    )
+
+                # Combine data from steps 1-4 (profile settings only, no shared settings)
+                combined_data = {
+                    **self.step1_data,
+                    **self.step2_data,
+                    **self.step3_data,
+                    **self.step4_data,
+                }
+
+                # Create profile config entry
+                profile_name = combined_data[CONF_PROFILE_NAME]
+                server_type = combined_data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+
+                server_display_map = {
+                    SERVER_TYPE_LMSTUDIO: "LM Studio",
+                    SERVER_TYPE_LLAMACPP: "llama.cpp",
+                    SERVER_TYPE_OLLAMA: "Ollama",
+                    SERVER_TYPE_OPENAI: "OpenAI",
+                    SERVER_TYPE_GEMINI: "Gemini",
+                    SERVER_TYPE_ANTHROPIC: "Claude",
+                    SERVER_TYPE_OPENROUTER: "OpenRouter",
+                    SERVER_TYPE_OPENCLAW: "OpenClaw",
+                    SERVER_TYPE_HERMES: "Hermes Agent",
+                    SERVER_TYPE_VLLM: "vLLM",
+                }
+                server_display = server_display_map.get(server_type, "LM Studio")
+
+                unique_id = (
+                    f"{DOMAIN}_{server_type}_{profile_name.lower().replace(' ', '_')}"
+                )
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
+
+                return self.async_create_entry(
+                    title=f"{server_display} - {profile_name}",
+                    data=combined_data,
+                )
+
+        # Build schema for MCP server settings
+        mcp_schema = vol.Schema(
+            {
+                vol.Required(CONF_MCP_PORT, default=DEFAULT_MCP_PORT): vol.Coerce(int),
+                vol.Optional(CONF_ALLOWED_IPS, default=DEFAULT_ALLOWED_IPS): str,
+                vol.Optional(
+                    CONF_ENABLE_GAP_FILLING, default=DEFAULT_ENABLE_GAP_FILLING
+                ): bool,
+                vol.Optional(
+                    CONF_MAX_ENTITIES_PER_DISCOVERY,
+                    default=DEFAULT_MAX_ENTITIES_PER_DISCOVERY,
+                ): vol.All(vol.Coerce(int), vol.Range(min=20, max=500)),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="mcp_server",
+            data_schema=mcp_schema,
+            errors=errors,
+            description_placeholders={
+                "info": "These settings are shared by every profile. The port is 8091 by default. Add search and other tools afterwards from the Tools menu; those apply without a restart."
+            },
+        )
+
+    async def async_step_system(self, data: dict[str, Any]) -> FlowResult:
+        """Handle programmatic creation of system entry (no UI)."""
+        # Set unique ID for system entry
+        await self.async_set_unique_id(SYSTEM_ENTRY_UNIQUE_ID)
+        self._abort_if_unique_id_configured()
+
+        # Create system entry with provided data
+        return self.async_create_entry(
+            title="Shared MCP Server Settings",
+            data=data,
+        )
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(cls, config_entry):
+        """Tool instances are subentries of the system entry."""
+        return async_get_supported_subentry_types(config_entry)
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get options flow for this handler."""
+        return AssistHarnessOptionsFlow()
+
+
+# Translated section slots per tool type: "brave", then "brave_2" .. "brave_6".
+# Home Assistant looks section titles up as sections.<slot>.name and passes the
+# step's description_placeholders. Each slot's name is "{title_<slot>}", so two
+# SearXNG sections can show two different display names. A missing translation
+# falls back to the schema key, which is why an extra instance uses its title
+# as the key instead of "brave_7".
+_PROFILE_TOOL_SLOTS = 6
+
+
+def _tool_section_headers(subentries: list) -> list[str]:
+    """Display name, with the prefix when several instances share a title."""
+    labels: list[str] = []
+    for subentry in subentries:
+        title = subentry.title or subentry.subentry_type
+        if len(subentries) == 1:
+            labels.append(title)
+            continue
+        raw = str(dict(subentry.data).get("prefix") or "").strip().rstrip("_-.:/")
+        if raw and raw not in title:
+            labels.append(f"{title} ({raw})")
+        else:
+            labels.append(title)
+    seen: dict[str, int] = {}
+    unique: list[str] = []
+    for label in labels:
+        seen[label] = seen.get(label, 0) + 1
+        count = seen[label]
+        unique.append(label if count == 1 else f"{label} ({count})")
+    return unique
+
+
+class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Assist Harness."""
+
+    def __init__(self) -> None:
+        """Initialize options flow."""
+        super().__init__()
+        self.profile_options: dict[str, Any] = {}
+
+    def _finish_profile(self):
+        """Save profile options without dropping tool records."""
+        merged = dict(self.profile_options)
+        for key in ("tools", "disabled_tools"):
+            if key in self.config_entry.options and key not in merged:
+                value = self.config_entry.options[key]
+                merged[key] = list(value) if isinstance(value, list) else value
+        new_profile_name = merged.get(CONF_PROFILE_NAME)
+        old_profile_name = self.config_entry.options.get(
+            CONF_PROFILE_NAME, self.config_entry.data.get(CONF_PROFILE_NAME)
+        )
+        if new_profile_name and new_profile_name != old_profile_name:
+            server_type = self.config_entry.data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+            server_display_map = {
+                SERVER_TYPE_LMSTUDIO: "LM Studio",
+                SERVER_TYPE_LLAMACPP: "llama.cpp",
+                SERVER_TYPE_OLLAMA: "Ollama",
+                SERVER_TYPE_OPENAI: "OpenAI",
+                SERVER_TYPE_GEMINI: "Gemini",
+                SERVER_TYPE_ANTHROPIC: "Claude",
+                SERVER_TYPE_OPENROUTER: "OpenRouter",
+                SERVER_TYPE_OPENCLAW: "OpenClaw",
+                SERVER_TYPE_HERMES: "Hermes Agent",
+                SERVER_TYPE_VLLM: "vLLM",
+            }
+            server_display = server_display_map.get(server_type, "LM Studio")
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                title=f"{server_display} - {new_profile_name}",
+            )
+        return self.async_create_entry(title="", data=merged)
+
+    async def async_step_init(self, user_input=None):
+        """Open server settings, or the profile menu."""
+        if self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            return await self.async_step_mcp_server()
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["profile", "profile_tools"],
+        )
+
+    def _system_entry(self):
+        for candidate in self.hass.config_entries.async_entries(DOMAIN):
+            if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                return candidate
+        return None
+
+    def _tool_rows(self, values: dict[str, Any] | None = None):
+        """One row per tool subentry, in the order the form shows them.
+
+        The section key is a stable slot (``brave``, ``brave_2``, ...) so
+        strings.json can translate the fields. The visible title is the
+        ``title_<slot>`` placeholder. Past the translated slots, the key is
+        the title itself: a missing translation falls back to the key.
+        """
+        from .tools.registry import cached_tool_types
+
+        system = self._system_entry()
+        if system is None:
+            return []
+        types = cached_tool_types()
+        grouped: dict[str, list] = {}
+        order: list[tuple[str, Any]] = []
+        for subentry in system.subentries.values():
+            tool = types.get(subentry.subentry_type)
+            if tool is None:
+                continue
+            grouped.setdefault(tool.id, []).append(subentry)
+            order.append((tool.id, subentry))
+        headers = {
+            tool_id: _tool_section_headers(subs) for tool_id, subs in grouped.items()
+        }
+        seen: dict[str, int] = {}
+        rows = []
+        for tool_id, subentry in order:
+            seen[tool_id] = seen.get(tool_id, 0) + 1
+            index = seen[tool_id]
+            header = headers[tool_id][index - 1]
+            translated = index <= _PROFILE_TOOL_SLOTS
+            if translated:
+                slot = tool_id if index == 1 else f"{tool_id}_{index}"
+            else:
+                slot = header
+            submitted = (values or {}).get(slot)
+            rows.append(
+                {
+                    "slot": slot,
+                    "header": header,
+                    "translated": translated,
+                    "tool": types[tool_id],
+                    "subentry": subentry,
+                    "submitted": submitted if isinstance(submitted, dict) else None,
+                }
+            )
+        used: dict[str, int] = {}
+        for row in rows:
+            slot = row["slot"]
+            if slot not in used:
+                used[slot] = 1
+                continue
+            used[slot] += 1
+            row["slot"] = f"{slot} ({used[slot]})"
+            row["submitted"] = None
+        return rows
+
+    async def async_step_profile_tools(self, user_input=None):
+        """One section per tool: profile switch, then the shared settings."""
+        from .tool_flow import _preview_names, _split_input, tool_config_schema
+        from .tools.registry import get_registry
+
+        rows = self._tool_rows(user_input if isinstance(user_input, dict) else None)
+        disabled = {
+            str(item)
+            for item in (self.config_entry.options.get("disabled_tools") or [])
+        }
+        errors: dict[str, str] = {}
+        parsed: list[dict[str, Any]] = []
+        if user_input is not None:
+            claimed: dict[str, str] = {}
+            for row in rows:
+                submitted = row["submitted"]
+                if submitted is None:
+                    continue
+                tool = row["tool"]
+                stored = dict(row["subentry"].data)
+                payload = {
+                    key: value
+                    for key, value in submitted.items()
+                    if key != "enabled_for_profile"
+                }
+                name, prefix, config = _split_input(payload, tool)
+                for secret in tool.secrets:
+                    if not str(config.get(secret) or "").strip():
+                        config[secret] = stored.get(secret, "")
+                names = _preview_names(self.hass, tool, prefix, config)
+                clash = None
+                for tool_name in names:
+                    other = claimed.get(tool_name)
+                    if other is not None:
+                        clash = other
+                        break
+                    claimed[tool_name] = row["slot"]
+                if clash is not None:
+                    # Frontend 20260930.5 (HA 2026.10) draws a string error on
+                    # the section. A nested field map is not passed into the
+                    # section and renders as a blank alert.
+                    errors[row["slot"]] = "duplicate_tool_name"
+                    errors[clash] = "duplicate_tool_name"
+                parsed.append(
+                    {
+                        "row": row,
+                        "enabled": bool(submitted.get("enabled_for_profile", True)),
+                        "name": name,
+                        "prefix": prefix,
+                        "config": config,
+                    }
+                )
+            errors.update(shared_mcp_field_errors(user_input))
+            if not errors:
+                system = self._system_entry()
+                changed = False
+                for item in parsed:
+                    subentry = item["row"]["subentry"]
+                    data = {"prefix": item["prefix"], **item["config"]}
+                    if subentry.title == item["name"] and dict(subentry.data) == data:
+                        continue
+                    self.hass.config_entries.async_update_subentry(
+                        system,
+                        subentry,
+                        title=item["name"],
+                        data=data,
+                    )
+                    changed = True
+                if changed:
+                    registry = self.hass.data.get(DOMAIN, {}).get("tool_registry")
+                    if registry is None:
+                        registry = get_registry(self.hass)
+                    await registry.async_reload()
+                save_shared_mcp_settings(self.hass, user_input)
+                switched_off = [
+                    item["row"]["subentry"].subentry_id
+                    for item in parsed
+                    if not item["enabled"]
+                ]
+                merged = dict(self.config_entry.options)
+                merged.pop("profile_tools", None)
+                if switched_off:
+                    merged["disabled_tools"] = switched_off
+                else:
+                    merged.pop("disabled_tools", None)
+                domain_data = self.hass.data.setdefault(DOMAIN, {})
+                if self.config_entry.update_listeners:
+                    domain_data.setdefault("tools_only_entries", set()).add(
+                        self.config_entry.entry_id
+                    )
+                domain_data["tools_only_update"] = True
+                return self.async_create_entry(title="", data=merged)
+
+        schema: dict[Any, Any] = {}
+        placeholders: dict[str, str] = {}
+        for row in rows:
+            subentry = row["subentry"]
+            tool = row["tool"]
+            stored = dict(subentry.data)
+            submitted = row["submitted"] or {}
+            enabled_default = (
+                bool(submitted["enabled_for_profile"])
+                if submitted and "enabled_for_profile" in submitted
+                else subentry.subentry_id not in disabled
+            )
+            current = {
+                "name": submitted.get("name", subentry.title),
+                "prefix": submitted.get("prefix", stored.get("prefix") or ""),
+            }
+            for key, value in stored.items():
+                if key == "prefix":
+                    continue
+                current.setdefault(key, value)
+            for key, value in submitted.items():
+                if key in ("enabled_for_profile", "name", "prefix"):
+                    continue
+                current[key] = value
+            for secret in tool.secrets:
+                typed = submitted.get(secret, "")
+                current[secret] = typed if str(typed or "").strip() else ""
+            fields: dict[Any, Any] = {
+                vol.Required("enabled_for_profile", default=enabled_default): BooleanSelector(),
+            }
+            for key, validator in tool_config_schema(tool, current).schema.items():
+                fields[key] = validator
+            schema[vol.Required(row["slot"])] = section(
+                vol.Schema(fields), {"collapsed": False}
+            )
+            if row["translated"]:
+                placeholders[f"title_{row['slot']}"] = row["header"]
+        shown = shared_mcp_values(self._system_entry())
+        if isinstance(user_input, dict):
+            for key in SHARED_MCP_KEYS:
+                if key in user_input:
+                    shown[key] = user_input[key]
+        for marker, validator in shared_mcp_schema(shown).schema.items():
+            schema[marker] = validator
+        return self.async_show_form(
+            step_id="profile_tools",
+            data_schema=vol.Schema(schema),
+            errors=errors or None,
+            description_placeholders=placeholders or None,
+        )
+
+    async def async_step_profile(self, user_input=None):
+        """Edit this profile's model, prompts, and conversation settings."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            if not errors:
+                # Support both old and new config keys
+                if (
+                    CONF_FOLLOW_UP_MODE in user_input
+                    and CONF_RESPONSE_MODE not in user_input
+                ):
+                    user_input[CONF_RESPONSE_MODE] = user_input[CONF_FOLLOW_UP_MODE]
+                    del user_input[CONF_FOLLOW_UP_MODE]
+
+                # For OpenClaw, ensure model name and empty system prompt are set
+                server_type = self.config_entry.data.get(
+                    CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE
+                )
+                if server_type == SERVER_TYPE_OPENCLAW:
+                    if CONF_MODEL_NAME not in user_input:
+                        user_input[CONF_MODEL_NAME] = "main"
+                    if CONF_SYSTEM_PROMPT not in user_input:
+                        user_input[CONF_SYSTEM_PROMPT] = ""  # OpenClaw manages its own
+                    # Cleared fields are omitted, so fall back to defaults here
+                    # rather than to the values stored at setup
+                    if not (user_input.get(CONF_OPENCLAW_AGENT_ID) or "").strip():
+                        user_input[CONF_OPENCLAW_AGENT_ID] = DEFAULT_OPENCLAW_AGENT_ID
+                    if not (user_input.get(CONF_OPENCLAW_SESSION_KEY) or "").strip():
+                        user_input[CONF_OPENCLAW_SESSION_KEY] = DEFAULT_OPENCLAW_SESSION_KEY
+                elif server_type == SERVER_TYPE_HERMES:
+                    if CONF_SYSTEM_PROMPT not in user_input:
+                        user_input[CONF_SYSTEM_PROMPT] = ""  # Hermes manages its own
+                elif server_type in (
+                    SERVER_TYPE_LMSTUDIO,
+                    SERVER_TYPE_LLAMACPP,
+                    SERVER_TYPE_OLLAMA,
+                    SERVER_TYPE_VLLM,
+                ):
+                    # A cleared optional key is omitted; store "" so it is removed
+                    user_input.setdefault(CONF_API_KEY, "")
+
+                # Store profile settings, then choose tools or server settings
+                self.profile_options = user_input
+                return self._finish_profile()
+
+        # Get current values from options, then data, then defaults
+        options = self.config_entry.options
+        data = self.config_entry.data
+
+        # Get server type (can't be changed in options)
+        server_type = data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+
+        # Handle backward compatibility
+        response_mode_value = options.get(
+            CONF_RESPONSE_MODE, options.get(CONF_FOLLOW_UP_MODE, DEFAULT_RESPONSE_MODE)
+        )
+
+        # Fetch models based on server type
+        models = []
+        current_model = options.get(
+            CONF_MODEL_NAME, data.get(CONF_MODEL_NAME, DEFAULT_MODEL_NAME)
+        )
+
+        # OpenClaw/Hermes don't show a model field in options - skip model fetching
+        if server_type in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            # Don't fetch models, don't show model field
+            pass
+        elif server_type in [
+            SERVER_TYPE_LMSTUDIO,
+            SERVER_TYPE_LLAMACPP,
+            SERVER_TYPE_OLLAMA,
+            SERVER_TYPE_VLLM,
+        ]:
+            # Local servers - fetch from URL
+            server_url = options.get(
+                CONF_LMSTUDIO_URL, data.get(CONF_LMSTUDIO_URL, DEFAULT_LMSTUDIO_URL)
+            ).rstrip("/")
+            _LOGGER.info(
+                f"🔍 OPTIONS: Attempting to fetch models from {server_type} at {server_url}"
+            )
+            try:
+                models = await fetch_models_from_lmstudio(
+                    self.hass,
+                    server_url,
+                    options.get(CONF_API_KEY, data.get(CONF_API_KEY, "")),
+                )
+                _LOGGER.info(f"✅ OPTIONS: Successfully fetched {len(models)} models")
+            except Exception as err:
+                _LOGGER.error(f"❌ OPTIONS: Failed to fetch models: {err}")
+        elif server_type == SERVER_TYPE_OPENAI:
+            # OpenAI - fetch from API
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            if api_key:
+                _LOGGER.info("🔍 OPTIONS: Attempting to fetch models from OpenAI")
+                try:
+                    models = await fetch_models_from_openai(self.hass, api_key)
+                    _LOGGER.info(
+                        f"✅ OPTIONS: Successfully fetched {len(models)} OpenAI models"
+                    )
+                except Exception as err:
+                    _LOGGER.error(f"❌ OPTIONS: Failed to fetch OpenAI models: {err}")
+        elif server_type == SERVER_TYPE_GEMINI:
+            # Gemini - fetch from API
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            if api_key:
+                _LOGGER.info("🔍 OPTIONS: Attempting to fetch models from Gemini")
+                try:
+                    models = await fetch_models_from_gemini(self.hass, api_key)
+                    _LOGGER.info(
+                        f"✅ OPTIONS: Successfully fetched {len(models)} Gemini models"
+                    )
+                except Exception as err:
+                    _LOGGER.error(f"❌ OPTIONS: Failed to fetch Gemini models: {err}")
+        elif server_type == SERVER_TYPE_OPENROUTER:
+            # OpenRouter - fetch from API
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            if api_key:
+                _LOGGER.info("🔍 OPTIONS: Attempting to fetch models from OpenRouter")
+                try:
+                    models = await fetch_models_from_openrouter(self.hass, api_key)
+                    _LOGGER.info(
+                        f"✅ OPTIONS: Successfully fetched {len(models)} OpenRouter models"
+                    )
+                except Exception as err:
+                    _LOGGER.error(
+                        f"❌ OPTIONS: Failed to fetch OpenRouter models: {err}"
+                    )
+        elif server_type == SERVER_TYPE_ANTHROPIC:
+            # Anthropic - fetch from API
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            if api_key:
+                _LOGGER.info("🔍 OPTIONS: Attempting to fetch models from Anthropic")
+                try:
+                    models = await fetch_models_from_anthropic(self.hass, api_key)
+                    _LOGGER.info(
+                        f"✅ OPTIONS: Successfully fetched {len(models)} Anthropic models"
+                    )
+                except Exception as err:
+                    _LOGGER.error(
+                        f"❌ OPTIONS: Failed to fetch Anthropic models: {err}"
+                    )
+
+        # Build model selector based on whether models were fetched
+        if models:
+            # Show dropdown with available models (custom_value allows free text input)
+            model_selector = SelectSelector(
+                SelectSelectorConfig(
+                    options=models,
+                    mode=SelectSelectorMode.DROPDOWN,
+                    custom_value=True,
+                )
+            )
+        else:
+            # Show text input as fallback
+            model_selector = str
+
+        # Build schema based on server type
+        schema_dict = {
+            # 1. Profile Name
+            vol.Required(
+                CONF_PROFILE_NAME,
+                default=options.get(
+                    CONF_PROFILE_NAME, data.get(CONF_PROFILE_NAME, "Default")
+                ),
+            ): str,
+        }
+
+        # 2. Server URL or API Key (based on server type)
+        if server_type == SERVER_TYPE_OPENCLAW:
+            # OpenClaw Gateway - host, port, token, SSL
+            schema_dict[vol.Required(
+                CONF_OPENCLAW_HOST,
+                default=options.get(CONF_OPENCLAW_HOST, data.get(CONF_OPENCLAW_HOST, DEFAULT_OPENCLAW_HOST)),
+            )] = str
+            schema_dict[vol.Required(
+                CONF_OPENCLAW_PORT,
+                default=options.get(CONF_OPENCLAW_PORT, data.get(CONF_OPENCLAW_PORT, DEFAULT_OPENCLAW_PORT)),
+            )] = vol.Coerce(int)
+            schema_dict[vol.Required(
+                CONF_OPENCLAW_TOKEN,
+                default=options.get(CONF_OPENCLAW_TOKEN, data.get(CONF_OPENCLAW_TOKEN, "")),
+            )] = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+            schema_dict[vol.Required(
+                CONF_OPENCLAW_USE_SSL,
+                default=options.get(CONF_OPENCLAW_USE_SSL, data.get(CONF_OPENCLAW_USE_SSL, DEFAULT_OPENCLAW_USE_SSL)),
+            )] = BooleanSelector()
+        elif server_type == SERVER_TYPE_HERMES:
+            # Hermes Agent - server URL + optional API key
+            server_url = options.get(
+                CONF_HERMES_URL, data.get(CONF_HERMES_URL, DEFAULT_HERMES_URL)
+            )
+            schema_dict[vol.Required(CONF_HERMES_URL, default=server_url)] = str
+
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            schema_dict[vol.Optional(CONF_API_KEY, default=api_key)] = TextSelector(
+                TextSelectorConfig(type=TextSelectorType.PASSWORD)
+            )
+        elif server_type in [
+            SERVER_TYPE_LMSTUDIO,
+            SERVER_TYPE_LLAMACPP,
+            SERVER_TYPE_OLLAMA,
+            SERVER_TYPE_VLLM,
+        ]:
+            server_url = options.get(
+                CONF_LMSTUDIO_URL, data.get(CONF_LMSTUDIO_URL, DEFAULT_LMSTUDIO_URL)
+            )
+            schema_dict[vol.Required(CONF_LMSTUDIO_URL, default=server_url)] = str
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            schema_dict[
+                vol.Optional(CONF_API_KEY, description={"suggested_value": api_key})
+            ] = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+        elif server_type == SERVER_TYPE_OPENAI:
+            # OpenAI - hybrid (URL + API key)
+            server_url = options.get(
+                CONF_LMSTUDIO_URL,
+                data.get(CONF_LMSTUDIO_URL, OPENAI_BASE_URL)
+            )
+            schema_dict[vol.Required(CONF_LMSTUDIO_URL, default=server_url)] = str
+
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            schema_dict[vol.Required(CONF_API_KEY, default=api_key)] = TextSelector(
+                TextSelectorConfig(type=TextSelectorType.PASSWORD)
+            )
+        else:
+            # Other cloud providers (Gemini, Anthropic, OpenRouter) - API key only
+            api_key = options.get(CONF_API_KEY, data.get(CONF_API_KEY, ""))
+            schema_dict[vol.Required(CONF_API_KEY, default=api_key)] = TextSelector(
+                TextSelectorConfig(type=TextSelectorType.PASSWORD)
+            )
+
+        # 3. Model Name (skip for OpenClaw - hardcoded to "main" - and Hermes)
+        if server_type not in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            schema_dict[
+                vol.Required(CONF_MODEL_NAME, default=current_model)
+            ] = model_selector
+
+        # Continue with remaining common fields
+        # 4. System Prompt (skip for OpenClaw/Hermes - they manage their own)
+        if server_type not in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            schema_dict[
+                vol.Required(
+                    CONF_SYSTEM_PROMPT,
+                    default=options.get(
+                        CONF_SYSTEM_PROMPT,
+                        data.get(CONF_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT),
+                    ),
+                )
+            ] = TextSelector(
+                TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True)
+            )
+
+        # 5. Technical Instructions (skip for OpenClaw/Hermes - they manage their own)
+        if server_type not in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            schema_dict[
+                vol.Required(
+                    CONF_TECHNICAL_PROMPT,
+                    default=options.get(
+                        CONF_TECHNICAL_PROMPT,
+                        data.get(CONF_TECHNICAL_PROMPT, DEFAULT_TECHNICAL_PROMPT),
+                    ),
+                )
+            ] = TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT, multiline=True))
+
+        # For OpenClaw/Hermes, show conversation settings but hide LLM-specific fields
+        if server_type in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
+            if server_type == SERVER_TYPE_HERMES:
+                session_key_conf = CONF_HERMES_SESSION_KEY
+                session_key_default = DEFAULT_HERMES_SESSION_KEY
+            else:
+                session_key_conf = CONF_OPENCLAW_SESSION_KEY
+                session_key_default = DEFAULT_OPENCLAW_SESSION_KEY
+            response_mode_value = options.get(
+                CONF_RESPONSE_MODE, options.get(CONF_FOLLOW_UP_MODE, DEFAULT_RESPONSE_MODE)
+            )
+            schema_dict[
+                vol.Required(
+                    CONF_CONTROL_HA,
+                    default=options.get(
+                        CONF_CONTROL_HA,
+                        data.get(CONF_CONTROL_HA, DEFAULT_CONTROL_HA),
+                    ),
+                )
+            ] = bool
+            if server_type == SERVER_TYPE_OPENCLAW:
+                # Profiles created before the session mode setting existed
+                # keep their fixed session key
+                schema_dict.update(
+                    _openclaw_session_schema(
+                        options.get(
+                            CONF_OPENCLAW_AGENT_ID,
+                            data.get(CONF_OPENCLAW_AGENT_ID, DEFAULT_OPENCLAW_AGENT_ID),
+                        ),
+                        options.get(
+                            CONF_OPENCLAW_SESSION_MODE,
+                            data.get(
+                                CONF_OPENCLAW_SESSION_MODE, OPENCLAW_SESSION_MODE_FIXED
+                            ),
+                        ),
+                        options.get(
+                            session_key_conf,
+                            data.get(session_key_conf, session_key_default),
+                        ),
+                        options.get(
+                            CONF_SYSTEM_PROMPT, data.get(CONF_SYSTEM_PROMPT, "")
+                        ),
+                    )
+                )
+            else:
+                schema_dict[
+                    vol.Optional(
+                        session_key_conf,
+                        default=options.get(
+                            session_key_conf,
+                            data.get(session_key_conf, session_key_default),
+                        ),
+                    )
+                ] = str
+            schema_dict.update(
+                {
+                    vol.Required(
+                        CONF_RESPONSE_MODE, default=response_mode_value
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "none", "label": "None"},
+                                {"value": "default", "label": "Smart"},
+                                {"value": "always", "label": "Always"},
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_FOLLOW_UP_PHRASES,
+                        default=options.get(
+                            CONF_FOLLOW_UP_PHRASES,
+                            data.get(CONF_FOLLOW_UP_PHRASES, DEFAULT_FOLLOW_UP_PHRASES),
+                        ),
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
+                    vol.Optional(
+                        CONF_END_WORDS,
+                        default=options.get(
+                            CONF_END_WORDS, data.get(CONF_END_WORDS, DEFAULT_END_WORDS)
+                        ),
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
+                    vol.Optional(
+                        CONF_CLEAN_RESPONSES,
+                        default=options.get(
+                            CONF_CLEAN_RESPONSES,
+                            data.get(CONF_CLEAN_RESPONSES, DEFAULT_CLEAN_RESPONSES),
+                        ),
+                    ): bool,
+                    vol.Required(
+                        CONF_TIMEOUT,
+                        default=options.get(CONF_TIMEOUT, data.get(CONF_TIMEOUT, 60)),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
+                    vol.Required(
+                        CONF_DEBUG_MODE,
+                        default=options.get(
+                            CONF_DEBUG_MODE,
+                            data.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE),
+                        ),
+                    ): bool,
+                }
+            )
+        else:
+            # Other servers - show all fields
+            schema_dict.update(
+                {
+                    # 6. Temperature
+                    vol.Required(
+                        CONF_TEMPERATURE,
+                        default=options.get(
+                            CONF_TEMPERATURE,
+                            data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
+                        ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=1.0)),
+                    # 7. Max Response Tokens
+                    vol.Required(
+                        CONF_MAX_TOKENS,
+                        default=options.get(
+                            CONF_MAX_TOKENS,
+                            data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
+                        ),
+                    ): vol.Coerce(int),
+                }
+            )
+
+            # Add Ollama-specific fields in correct position (after Max Tokens)
+            if server_type == SERVER_TYPE_OLLAMA:
+                schema_dict[
+                    vol.Optional(
+                        CONF_OLLAMA_NUM_CTX,
+                        default=options.get(
+                            CONF_OLLAMA_NUM_CTX,
+                            data.get(CONF_OLLAMA_NUM_CTX, DEFAULT_OLLAMA_NUM_CTX),
+                        ),
+                    )
+                ] = vol.Coerce(int)
+                schema_dict[
+                    vol.Optional(
+                        CONF_OLLAMA_KEEP_ALIVE,
+                        default=options.get(
+                            CONF_OLLAMA_KEEP_ALIVE,
+                            data.get(CONF_OLLAMA_KEEP_ALIVE, DEFAULT_OLLAMA_KEEP_ALIVE),
+                        ),
+                    )
+                ] = str
+
+            # Continue with remaining fields
+            schema_dict.update(
+                {
+                    # 8/10. Max History Messages
+                    vol.Required(
+                        CONF_MAX_HISTORY,
+                        default=options.get(
+                            CONF_MAX_HISTORY,
+                            data.get(CONF_MAX_HISTORY, DEFAULT_MAX_HISTORY),
+                        ),
+                    ): vol.Coerce(int),
+                    # 9/11. Control Home Assistant
+                    vol.Required(
+                        CONF_CONTROL_HA,
+                        default=options.get(
+                            CONF_CONTROL_HA,
+                            data.get(CONF_CONTROL_HA, DEFAULT_CONTROL_HA),
+                        ),
+                    ): bool,
+                    # 10/12. Max Tool Iterations
+                    vol.Required(
+                        CONF_MAX_ITERATIONS,
+                        default=options.get(
+                            CONF_MAX_ITERATIONS,
+                            data.get(CONF_MAX_ITERATIONS, DEFAULT_MAX_ITERATIONS),
+                        ),
+                    ): vol.Coerce(int),
+                    # 11/13. Response Mode
+                    vol.Required(
+                        CONF_RESPONSE_MODE, default=response_mode_value
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "none", "label": "None"},
+                                {"value": "default", "label": "Smart"},
+                                {"value": "always", "label": "Always"},
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    # 12/14. Follow-up Phrases
+                    vol.Optional(
+                        CONF_FOLLOW_UP_PHRASES,
+                        default=options.get(
+                            CONF_FOLLOW_UP_PHRASES,
+                            data.get(CONF_FOLLOW_UP_PHRASES, DEFAULT_FOLLOW_UP_PHRASES),
+                        ),
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
+                    # 13/15. End Conversation Words
+                    vol.Optional(
+                        CONF_END_WORDS,
+                        default=options.get(
+                            CONF_END_WORDS, data.get(CONF_END_WORDS, DEFAULT_END_WORDS)
+                        ),
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
+                    # 14/16. Clean Responses
+                    vol.Required(
+                        CONF_CLEAN_RESPONSES,
+                        default=options.get(
+                            CONF_CLEAN_RESPONSES,
+                            data.get(CONF_CLEAN_RESPONSES, DEFAULT_CLEAN_RESPONSES),
+                        ),
+                    ): bool,
+                    # 15/17. Response Time Out
+                    vol.Required(
+                        CONF_TIMEOUT,
+                        default=options.get(
+                            CONF_TIMEOUT, data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
+                    # 16/18. Debug Mode
+                    vol.Required(
+                        CONF_DEBUG_MODE,
+                        default=options.get(
+                            CONF_DEBUG_MODE,
+                            data.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE),
+                        ),
+                    ): bool,
+                }
+            )
+
+        # Create the schema from the built dictionary
+        options_schema = vol.Schema(
+            _with_thinking_field(
+                schema_dict,
+                server_type,
+                options.get(
+                    CONF_THINKING_MODE,
+                    data.get(CONF_THINKING_MODE, DEFAULT_THINKING_MODE),
+                ),
+            )
+        )
+
+        # Set description based on server type
+        if server_type == SERVER_TYPE_OPENCLAW:
+            description_placeholders = {
+                "server_info": "OpenClaw's model and system prompt are configured on the OpenClaw server. Use the technical instructions below to configure how it uses MCP tools to control Home Assistant."
+            }
+        elif server_type == SERVER_TYPE_HERMES:
+            description_placeholders = {
+                "server_info": "Hermes Agent's system prompt is configured on the Hermes server. Only conversation settings are shown here."
+            }
+        else:
+            description_placeholders = {
+                "server_info": "Configure this conversation profile. These settings only affect this profile."
+            }
+
+        return self.async_show_form(
+            step_id="profile",
+            data_schema=options_schema,
+            errors=errors,
+            description_placeholders=description_placeholders,
+        )
+
+    async def async_step_mcp_server(self, user_input=None):
+        """Configure shared MCP server settings (affects all profiles)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            errors = shared_mcp_field_errors(user_input)
+
+            if not errors:
+                from . import get_system_entry
+
+                system_entry = get_system_entry(self.hass)
+                if system_entry:
+                    # Keep an existing tool list stored in data from being
+                    # overwritten by the server-settings form. Options get the
+                    # same server fields so they cannot hide this save.
+                    new = normalize_shared_mcp(user_input)
+                    self.hass.config_entries.async_update_entry(
+                        system_entry,
+                        data={**system_entry.data, **user_input},
+                        options={**system_entry.options, **new},
+                    )
+                    server = self.hass.data.get(DOMAIN, {}).get("shared_mcp_server")
+                    if server is not None:
+                        server.refresh_allowed_ips()
+                    _LOGGER.info("Updated system entry with shared MCP settings")
+                else:
+                    _LOGGER.error("System entry not found when saving shared settings")
+
+                if self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                    return self.async_create_entry(
+                        title="", data=dict(self.config_entry.options)
+                    )
+                return self._finish_profile()
+
+        # Get current values from system entry
+        from . import get_system_entry
+
+        system_entry = get_system_entry(self.hass)
+
+        # Fall back to this entry when the system entry is not created yet.
+        mcp_schema = shared_mcp_schema(
+            shared_mcp_values(system_entry or self.config_entry)
+        )
+
+        return self.async_show_form(
+            step_id="mcp_server",
+            data_schema=mcp_schema,
+            errors=errors,
+            description_placeholders={
+                "warning": "These settings are shared by every profile. Port changes need a restart. Tools are changed from the Tools menu and apply immediately."
+            },
+        )
+
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class NoModelsLoaded(HomeAssistantError):
+    """Error to indicate no models are loaded."""
+
+
+class InvalidModel(HomeAssistantError):
+    """Error to indicate the model is invalid."""
