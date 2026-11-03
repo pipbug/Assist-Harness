@@ -1,6 +1,8 @@
 """[kestrel] Mem0 long-term memory for MCP Assist (fork addition).
 
-Talks to a self-hosted Mem0 server over its REST API (X-API-Key auth):
+Talks to Mem0 over its REST API: a self-hosted server (X-API-Key auth, /memories, /search), or
+the hosted Mem0 Platform when the URL is https://api.mem0.ai ("Authorization: Token" auth,
+/v3/memories/add/, /v3/memories/search/; adds are queued server-side and return at once):
 - tools ``recall_memory(query)`` and ``save_memory(fact)`` for the LLM, and
 - ``schedule_turn_save()``: posts each finished turn to Mem0 for fact extraction
   as a background task, so it never delays the reply and a Mem0 outage only logs a warning.
@@ -32,11 +34,14 @@ CONF_MEM0_API_KEY = "mem0_api_key"
 CONF_MEM0_USER_ID = "mem0_user_id"
 DEFAULT_MEM0_URL = "http://127.0.0.1:8888"
 DEFAULT_MEM0_USER_ID = "kira"
+PLATFORM_HOST = "api.mem0.ai"
+# Logical path -> Mem0 Platform path
+_PLATFORM_PATHS = {"/memories": "/v3/memories/add/", "/search": "/v3/memories/search/"}
 
 # Tool calls wait for these, so keep them short. Mem0 search = one embedding call + pgvector.
 TOOL_TIMEOUT = aiohttp.ClientTimeout(total=6, connect=2)
-# Background turn save: 2 s to reach Mem0; extraction itself runs server-side and can take
-# several seconds, but it is off the reply path.
+# Background turn save: 2 s to reach Mem0; self-hosted extraction runs inside the request and can
+# take several seconds (the Platform queues it and answers at once), but it is off the reply path.
 SAVE_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=2)
 RECALL_TOP_K = 5
 
@@ -77,6 +82,14 @@ def options_schema(options: Dict[str, Any]) -> Dict[Any, Any]:
     }
 
 
+def is_platform(url: str) -> bool:
+    """True when ``url`` points at the hosted Mem0 Platform rather than a self-hosted server."""
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).hostname or "").lower()
+    return host == PLATFORM_HOST or host.endswith("." + PLATFORM_HOST)
+
+
 def _settings_of(entry) -> Optional[Dict[str, str]]:
     opts = {**entry.data, **entry.options}
     if not opts.get(CONF_MEM0_ENABLED):
@@ -102,10 +115,15 @@ def get_settings(hass, entry=None) -> Optional[Dict[str, str]]:
 
 async def _post(hass, settings, path: str, body: Dict[str, Any], timeout) -> Any:
     session = async_get_clientsession(hass)
+    if is_platform(settings["url"]):
+        path = _PLATFORM_PATHS.get(path, path)
+        headers = {"Authorization": "Token " + settings["api_key"], "Accept": "application/json"}
+    else:
+        headers = {"X-API-Key": settings["api_key"]}
     async with session.post(
         settings["url"] + path,
         json=body,
-        headers={"X-API-Key": settings["api_key"]},
+        headers=headers,
         timeout=timeout,
     ) as resp:
         if resp.status >= 300:

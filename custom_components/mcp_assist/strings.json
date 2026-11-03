@@ -131,7 +131,7 @@
           "thinking_mode": "Thinking",
           "debug_mode": "Debug Mode",
           "mem0_enabled": "Mem0 long-term memory",
-          "mem0_url": "Mem0 server URL",
+          "mem0_url": "Mem0 server URL (self-hosted, or https://api.mem0.ai for Mem0 Platform)",
           "mem0_api_key": "Mem0 API key",
           "mem0_user_id": "Mem0 user ID",
           "ollama_keep_alive": "Ollama Keep Alive",
