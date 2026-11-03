@@ -9,12 +9,18 @@ Optional tools are modules. Add one by dropping a file into `custom_components/a
 ## Features
 
 - MCP tools for entity discovery, state, history, scripts, and automations, so a large home does not dump thousands of entities into the prompt
-- Smart entity index for areas, domains, device classes, floors, and labels
+- Smart Entity Index: a pre-generated system structure index (~400-800 tokens) for context-aware queries
 - Several profiles, each with its own model, prompts, and choice of tools
 - Optional tools you can add and remove while Home Assistant is running: Brave, DuckDuckGo, SearXNG, Read URL, Mem0, and external MCP servers
 - More than one instance of the same tool when that is useful (two SearXNG servers, several external MCP servers), with a name prefix so their tools do not collide
 - Per profile, choose which enabled tools that profile's agent sees. Built-in Home Assistant tools stay on
 - Thinking control, multilingual prompts, and voice-oriented response cleanup
+
+## Smart Entity Index
+
+The Smart Entity Index is a lightweight (~400-800 tokens) snapshot of your Home Assistant system structure. The model reads it with the `get_index` tool, so it can choose sensible queries without receiving a full entity dump. The index includes areas, domains, device classes, people, calendars, zones, automations, and scripts. For entities without a standardized `device_class` (for example from custom integrations), LLM gap-filling infers semantic categories from naming patterns. That keeps queries faster and more accurate, and uses about 95% fewer tokens than sending every entity.
+
+**Enable Smart Entity Index** is a shared setting, on by default. It turns gap-filling on for every profile, because they all use the same MCP server.
 
 ## Requirements
 

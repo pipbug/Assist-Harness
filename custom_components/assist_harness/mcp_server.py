@@ -1379,7 +1379,7 @@ class MCPServer:
                 "content": [
                     {
                         "type": "text",
-                        "text": "Index manager not available. This feature requires Assist Harness 0.5.0 or later.",
+                        "text": "Index manager not available. Check that the Smart Entity Index is enabled and Assist Harness started correctly.",
                     }
                 ]
             }
