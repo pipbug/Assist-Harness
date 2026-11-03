@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Mga tool",
         "description": "Ang mga setting na ito ay pinaghahatian ng bawat profile. Iwanang blangko ang isang lihim para manatili ang nakaimbak na halaga. I-off ang isang tool para itago ito sa profile na ito; mananatiling naka-on ang bagong tool hanggang i-off mo ito.",
+        "data": {
+          "mcp_port": "Port ng MCP server (pinaghahatian ng bawat profile)",
+          "allowed_ips": "Karagdagang pinapayagang IP/saklaw (pinaghahatian ng bawat profile)",
+          "enable_gap_filling": "Smart Entity Index (pinaghahatian ng bawat profile)",
+          "max_entities_per_discovery": "Pinakamaraming entity bawat paghahanap (pinaghahatian ng bawat profile)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Bumabangga pa rin ang prefix na iyan sa ibang tool. Pumili ng iba."
+      "duplicate_tool_name": "Bumabangga pa rin ang prefix na iyan sa ibang tool. Pumili ng iba.",
+      "invalid_ip": "Hindi wastong format ng IP address o CIDR range. Gumamit ng mga halaga na pinaghihiwalay ng kuwit tulad ng: 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Outils",
         "description": "Ces réglages sont partagés par tous les profils. Laissez un secret vide pour conserver la valeur déjà enregistrée. Désactivez un outil pour le masquer à ce profil ; un outil ajouté plus tard reste activé jusqu'à ce que vous le désactiviez.",
+        "data": {
+          "mcp_port": "Port du serveur MCP (partagé par tous les profils)",
+          "allowed_ips": "IP ou plages supplémentaires autorisées (partagées par tous les profils)",
+          "enable_gap_filling": "Index d'entités intelligent (partagé par tous les profils)",
+          "max_entities_per_discovery": "Nombre max d'entités par recherche (partagé par tous les profils)"
+        },
+        "data_description": {
+          "mcp_port": "Prend effet après un redémarrage de Home Assistant.",
+          "allowed_ips": "IP ou plages CIDR séparées par des virgules, par exemple 172.30.0.0/16, 192.168.1.100. Appliqué sans redémarrage.",
+          "enable_gap_filling": "Complète les types d'appareils que l'index ne connaît pas. Partagé par tous les profils et appliqué sans redémarrage.",
+          "max_entities_per_discovery": "Nombre d'entités qu'une recherche peut renvoyer (20-500). Partagé par tous les profils et appliqué sans redémarrage."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Ce préfixe entre encore en conflit avec un autre outil. Choisissez-en un autre."
+      "duplicate_tool_name": "Ce préfixe entre encore en conflit avec un autre outil. Choisissez-en un autre.",
+      "invalid_ip": "Format d'adresse IP ou de plage CIDR invalide. Utilisez des valeurs separees par des virgules comme : 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

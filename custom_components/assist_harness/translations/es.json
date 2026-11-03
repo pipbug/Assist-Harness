@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Herramientas",
         "description": "Estos ajustes los comparten todos los perfiles. Deja un secreto en blanco para conservar el valor guardado. Desactiva una herramienta para ocultarla en este perfil; una herramienta nueva sigue activa hasta que la desactives.",
+        "data": {
+          "mcp_port": "Puerto del servidor MCP (compartido por todos los perfiles)",
+          "allowed_ips": "IPs o rangos adicionales permitidos (compartidos por todos los perfiles)",
+          "enable_gap_filling": "Índice inteligente de entidades (compartido por todos los perfiles)",
+          "max_entities_per_discovery": "Máximo de entidades por búsqueda (compartido por todos los perfiles)"
+        },
+        "data_description": {
+          "mcp_port": "Surte efecto después de reiniciar Home Assistant.",
+          "allowed_ips": "IPs o rangos CIDR separados por comas, por ejemplo 172.30.0.0/16, 192.168.1.100. Se aplica sin reiniciar.",
+          "enable_gap_filling": "Completa tipos de dispositivo que el índice no conoce. Compartido por todos los perfiles y se aplica sin reiniciar.",
+          "max_entities_per_discovery": "Cuántas entidades puede devolver una búsqueda (20-500). Compartido por todos los perfiles y se aplica sin reiniciar."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Ese prefijo todavía coincide con otra herramienta. Elige otro."
+      "duplicate_tool_name": "Ese prefijo todavía coincide con otra herramienta. Elige otro.",
+      "invalid_ip": "Formato de direccion IP o rango CIDR invalido. Usa valores separados por comas como: 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

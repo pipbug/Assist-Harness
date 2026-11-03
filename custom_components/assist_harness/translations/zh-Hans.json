@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "工具",
         "description": "这些设置由每个配置文件共享。秘密留空会保留已保存的值。关闭某个工具即可对这个配置文件隐藏它；之后添加的工具会一直保持开启，直到你关闭它。",
+        "data": {
+          "mcp_port": "MCP 服务器端口（所有配置文件共享）",
+          "allowed_ips": "额外允许的 IP/网段（所有配置文件共享）",
+          "enable_gap_filling": "智能实体索引（所有配置文件共享）",
+          "max_entities_per_discovery": "每次发现的最大实体数（所有配置文件共享）"
+        },
+        "data_description": {
+          "mcp_port": "在重新启动 Home Assistant 之后生效。",
+          "allowed_ips": "用逗号分隔的 IP 或 CIDR 网段，例如 172.30.0.0/16, 192.168.1.100。无需重启即可生效。",
+          "enable_gap_filling": "补全索引不知道的设备类型。所有配置文件共享，无需重启即可生效。",
+          "max_entities_per_discovery": "一次发现最多返回多少个实体（20-500）。所有配置文件共享，无需重启即可生效。"
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "该前缀仍与另一个工具冲突。请另选一个。"
+      "duplicate_tool_name": "该前缀仍与另一个工具冲突。请另选一个。",
+      "invalid_ip": "IP地址或CIDR范围格式无效。请使用逗号分隔的值，如：172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

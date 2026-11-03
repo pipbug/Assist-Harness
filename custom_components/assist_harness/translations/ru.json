@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Инструменты",
         "description": "Эти настройки общие для всех профилей. Оставьте секрет пустым, чтобы сохранить уже записанное значение. Выключите инструмент, чтобы скрыть его в этом профиле; новый инструмент остаётся включённым, пока вы его не выключите.",
+        "data": {
+          "mcp_port": "Порт сервера MCP (общий для всех профилей)",
+          "allowed_ips": "Дополнительные разрешённые IP и диапазоны (общие для всех профилей)",
+          "enable_gap_filling": "Умный индекс сущностей (общий для всех профилей)",
+          "max_entities_per_discovery": "Максимум сущностей за один поиск (общий для всех профилей)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Этот префикс всё ещё совпадает с другим инструментом. Выберите другой."
+      "duplicate_tool_name": "Этот префикс всё ещё совпадает с другим инструментом. Выберите другой.",
+      "invalid_ip": "Неверный формат IP-адреса или CIDR-диапазона. Используйте значения через запятую, например: 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

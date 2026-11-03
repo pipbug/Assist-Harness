@@ -388,6 +388,115 @@ def validate_allowed_ips(allowed_ips_str: str) -> tuple[bool, str]:
     return True, ""
 
 
+SHARED_MCP_KEYS = (
+    CONF_MCP_PORT,
+    CONF_ALLOWED_IPS,
+    CONF_ENABLE_GAP_FILLING,
+    CONF_MAX_ENTITIES_PER_DISCOVERY,
+)
+
+
+def shared_mcp_values(entry) -> dict[str, Any]:
+    """Current shared server settings, options first, then data, then defaults."""
+    options = entry.options if entry is not None else {}
+    data = entry.data if entry is not None else {}
+
+    def pick(key: str, default: Any) -> Any:
+        if key in options:
+            return options[key]
+        if key in data:
+            return data[key]
+        return default
+
+    return {
+        CONF_MCP_PORT: pick(CONF_MCP_PORT, DEFAULT_MCP_PORT),
+        CONF_ALLOWED_IPS: pick(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS),
+        CONF_ENABLE_GAP_FILLING: pick(CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING),
+        CONF_MAX_ENTITIES_PER_DISCOVERY: pick(
+            CONF_MAX_ENTITIES_PER_DISCOVERY, DEFAULT_MAX_ENTITIES_PER_DISCOVERY
+        ),
+    }
+
+
+def normalize_shared_mcp(values: dict[str, Any]) -> dict[str, Any]:
+    """Compare server settings with one type per field."""
+    current = shared_mcp_values(None)
+    current.update(values or {})
+    allowed = current.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
+    return {
+        CONF_MCP_PORT: int(current.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)),
+        CONF_ALLOWED_IPS: "" if allowed is None else str(allowed),
+        CONF_ENABLE_GAP_FILLING: bool(
+            current.get(CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING)
+        ),
+        CONF_MAX_ENTITIES_PER_DISCOVERY: int(
+            current.get(CONF_MAX_ENTITIES_PER_DISCOVERY, DEFAULT_MAX_ENTITIES_PER_DISCOVERY)
+        ),
+    }
+
+
+def shared_mcp_schema(current: dict[str, Any] | None = None) -> vol.Schema:
+    """Schema for the system entry's server settings form.
+
+    The profile Tools form appends these fields after the tool sections.
+    """
+    current = normalize_shared_mcp(current or {})
+    return vol.Schema(
+        {
+            vol.Required(CONF_MCP_PORT, default=current[CONF_MCP_PORT]): vol.Coerce(int),
+            vol.Optional(CONF_ALLOWED_IPS, default=current[CONF_ALLOWED_IPS]): str,
+            vol.Optional(
+                CONF_ENABLE_GAP_FILLING, default=current[CONF_ENABLE_GAP_FILLING]
+            ): bool,
+            vol.Optional(
+                CONF_MAX_ENTITIES_PER_DISCOVERY,
+                default=current[CONF_MAX_ENTITIES_PER_DISCOVERY],
+            ): vol.All(vol.Coerce(int), vol.Range(min=20, max=500)),
+        }
+    )
+
+
+def shared_mcp_field_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    """Validation shared with the system entry's server settings form."""
+    allowed = user_input.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
+    if not isinstance(allowed, str):
+        allowed = "" if allowed is None else str(allowed)
+    is_valid, error_msg = validate_allowed_ips(allowed)
+    if not is_valid:
+        _LOGGER.warning("Invalid allowed IPs: %s", error_msg)
+        return {CONF_ALLOWED_IPS: "invalid_ip"}
+    return {}
+
+
+def save_shared_mcp_settings(hass: HomeAssistant, user_input: dict[str, Any]) -> bool:
+    """Store changed server settings on the system entry. Returns True if written.
+
+    The values are written to the entry options and to data. Data is what the
+    system entry form already saves, and several readers look there; options
+    are preferred when both are set, so they are kept identical. Nothing is
+    written when the values already match. The running server keeps its port.
+    Allowed IPs are reread in place.
+    """
+    from . import get_system_entry
+
+    system = get_system_entry(hass)
+    if system is None:
+        return False
+    new = normalize_shared_mcp(user_input)
+    if new == normalize_shared_mcp(shared_mcp_values(system)):
+        return False
+    hass.config_entries.async_update_entry(
+        system,
+        data={**system.data, **new},
+        options={**system.options, **new},
+    )
+    server = hass.data.get(DOMAIN, {}).get("shared_mcp_server")
+    if server is not None:
+        # The listening port stays as it was started. Allowed IPs are reread.
+        server.refresh_allowed_ips()
+    return True
+
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_PROFILE_NAME): str,
@@ -1508,6 +1617,7 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
                         "config": config,
                     }
                 )
+            errors.update(shared_mcp_field_errors(user_input))
             if not errors:
                 system = self._system_entry()
                 changed = False
@@ -1528,6 +1638,7 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
                     if registry is None:
                         registry = get_registry(self.hass)
                     await registry.async_reload()
+                save_shared_mcp_settings(self.hass, user_input)
                 switched_off = [
                     item["row"]["subentry"].subentry_id
                     for item in parsed
@@ -1584,6 +1695,13 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
             )
             if row["translated"]:
                 placeholders[f"title_{row['slot']}"] = row["header"]
+        shown = shared_mcp_values(self._system_entry())
+        if isinstance(user_input, dict):
+            for key in SHARED_MCP_KEYS:
+                if key in user_input:
+                    shown[key] = user_input[key]
+        for marker, validator in shared_mcp_schema(shown).schema.items():
+            schema[marker] = validator
         return self.async_show_form(
             step_id="profile_tools",
             data_schema=vol.Schema(schema),
@@ -2118,12 +2236,7 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Validate allowed IPs
-            allowed_ips_str = user_input.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS)
-            is_valid, error_msg = validate_allowed_ips(allowed_ips_str)
-            if not is_valid:
-                errors[CONF_ALLOWED_IPS] = "invalid_ip"
-                _LOGGER.warning("Invalid allowed IPs in options: %s", error_msg)
+            errors = shared_mcp_field_errors(user_input)
 
             if not errors:
                 from . import get_system_entry
@@ -2131,9 +2244,17 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
                 system_entry = get_system_entry(self.hass)
                 if system_entry:
                     # Keep an existing tool list stored in data from being
-                    # overwritten by the server-settings form.
-                    data = {**system_entry.data, **user_input}
-                    self.hass.config_entries.async_update_entry(system_entry, data=data)
+                    # overwritten by the server-settings form. Options get the
+                    # same server fields so they cannot hide this save.
+                    new = normalize_shared_mcp(user_input)
+                    self.hass.config_entries.async_update_entry(
+                        system_entry,
+                        data={**system_entry.data, **user_input},
+                        options={**system_entry.options, **new},
+                    )
+                    server = self.hass.data.get(DOMAIN, {}).get("shared_mcp_server")
+                    if server is not None:
+                        server.refresh_allowed_ips()
                     _LOGGER.info("Updated system entry with shared MCP settings")
                 else:
                     _LOGGER.error("System entry not found when saving shared settings")
@@ -2149,51 +2270,9 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
 
         system_entry = get_system_entry(self.hass)
 
-        # Get shared settings from system entry (with fallback to profile for backward compat)
-        if system_entry:
-            sys_options = system_entry.options
-            sys_data = system_entry.data
-        else:
-            # Fallback to profile entry for backward compatibility
-            sys_options = self.config_entry.options
-            sys_data = self.config_entry.data
-
-        # Build schema for MCP server settings
-        mcp_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_MCP_PORT,
-                    default=sys_options.get(
-                        CONF_MCP_PORT, sys_data.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)
-                    ),
-                ): vol.Coerce(int),
-                vol.Optional(
-                    CONF_ALLOWED_IPS,
-                    default=sys_options.get(
-                        CONF_ALLOWED_IPS,
-                        sys_data.get(CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS),
-                    ),
-                ): str,
-                vol.Optional(
-                    CONF_ENABLE_GAP_FILLING,
-                    default=sys_options.get(
-                        CONF_ENABLE_GAP_FILLING,
-                        sys_data.get(
-                            CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING
-                        ),
-                    ),
-                ): bool,
-                vol.Optional(
-                    CONF_MAX_ENTITIES_PER_DISCOVERY,
-                    default=sys_options.get(
-                        CONF_MAX_ENTITIES_PER_DISCOVERY,
-                        sys_data.get(
-                            CONF_MAX_ENTITIES_PER_DISCOVERY,
-                            DEFAULT_MAX_ENTITIES_PER_DISCOVERY,
-                        ),
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=20, max=500)),
-            }
+        # Fall back to this entry when the system entry is not created yet.
+        mcp_schema = shared_mcp_schema(
+            shared_mcp_values(system_entry or self.config_entry)
         )
 
         return self.async_show_form(

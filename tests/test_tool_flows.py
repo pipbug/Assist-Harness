@@ -293,7 +293,13 @@ async def test_system_options_and_profile_tool_selection(hass, monkeypatch):
     assert tools_form["description_placeholders"]["title_read_url"] == "Read URL"
     assert STRINGS["options"]["step"]["profile_tools"]["sections"]["read_url"]["name"] == "{title_read_url}"
     sections = _form_sections(tools_form)
-    assert list(sections) == ["read_url"]
+    assert list(sections)[:1] == ["read_url"]
+    assert list(sections)[-4:] == [
+        "mcp_port",
+        "allowed_ips",
+        "enable_gap_filling",
+        "max_entities_per_discovery",
+    ]
     assert sections["read_url"].options["collapsed"] is False
     enabled, selector = _field(sections["read_url"], "enabled_for_profile")
     assert enabled is True
@@ -457,7 +463,13 @@ async def test_profile_tools_form_edits_one_subentry_and_keeps_new_tools(hass):
     )
     assert form["type"] == "form"
     sections = _form_sections(form)
-    assert list(sections) == ["brave", "read_url", "searxng", "searxng_2"]
+    assert list(sections)[:4] == ["brave", "read_url", "searxng", "searxng_2"]
+    assert list(sections)[-4:] == [
+        "mcp_port",
+        "allowed_ips",
+        "enable_gap_filling",
+        "max_entities_per_discovery",
+    ]
     assert form["description_placeholders"] == {
         "title_brave": "Brave Search",
         "title_read_url": "Read URL",
@@ -465,9 +477,15 @@ async def test_profile_tools_form_edits_one_subentry_and_keeps_new_tools(hass):
         "title_searxng_2": "SearXNG (lab)",
     }
     serialized = probatio.to_field_list(form["data_schema"], custom_serializer=cv.custom_serializer)
-    assert [field["name"] for field in serialized] == ["brave", "read_url", "searxng", "searxng_2"]
-    assert all(field["expanded"] is True for field in serialized)
-    for slot in sections:
+    assert [field["name"] for field in serialized][:4] == ["brave", "read_url", "searxng", "searxng_2"]
+    assert [field["name"] for field in serialized][-4:] == [
+        "mcp_port",
+        "allowed_ips",
+        "enable_gap_filling",
+        "max_entities_per_discovery",
+    ]
+    assert all(field["expanded"] is True for field in serialized if field.get("type") == "expandable")
+    for slot in ("brave", "read_url", "searxng", "searxng_2"):
         enabled, selector = _field(sections[slot], "enabled_for_profile")
         assert enabled is True
         assert isinstance(selector, BooleanSelector)
@@ -563,6 +581,92 @@ async def test_profile_tools_form_edits_one_subentry_and_keeps_new_tools(hass):
     assert system.subentries[brave.subentry_id].data["api_key"] == "abc"
     assert duck.subentry_id not in (profile.options.get("disabled_tools") or [])
     assert reloads == []
+
+
+@pytest.mark.usefixtures("_flow_deps")
+async def test_profile_tools_form_saves_shared_server_fields(hass):
+    """Shared server fields sit after the tool sections and update the system entry."""
+    await async_ensure_tool_types(hass)
+    system = _system(hass)
+    await _add_tool(hass, system, "read_url", {"name": "Read URL", "prefix": ""})
+    profile = _profile(hass)
+    before = dict(system.data)
+    before_options = dict(system.options)
+
+    menu = await hass.config_entries.options.async_init(profile.entry_id)
+    form = await hass.config_entries.options.async_configure(
+        menu["flow_id"],
+        {"next_step_id": "profile_tools"},
+    )
+    fields = probatio.to_field_list(form["data_schema"], custom_serializer=cv.custom_serializer)
+    names = [field["name"] for field in fields]
+    shared = ["mcp_port", "allowed_ips", "enable_gap_filling", "max_entities_per_discovery"]
+    assert names[-4:] == shared
+    assert all(field.get("type") != "expandable" for field in fields[-4:])
+    assert names.index("read_url") < names.index("mcp_port")
+    labels = STRINGS["options"]["step"]["profile_tools"]["data"]
+    notes = STRINGS["options"]["step"]["profile_tools"]["data_description"]
+    assert "shared by all profiles" in labels["mcp_port"]
+    assert "restart" in notes["mcp_port"].lower()
+    port, _selector = _field_default(form, "mcp_port")
+    assert port == 8091
+
+    invalid = await hass.config_entries.options.async_configure(
+        form["flow_id"],
+        {
+            "read_url": {"enabled_for_profile": True, "name": "Read URL", "prefix": ""},
+            "mcp_port": 8091,
+            "allowed_ips": "not-an-ip",
+            "enable_gap_filling": True,
+            "max_entities_per_discovery": 50,
+        },
+    )
+    assert invalid["type"] == "form"
+    assert invalid["errors"] == {"allowed_ips": "invalid_ip"}
+    assert dict(system.data) == before
+    assert dict(system.options) == before_options
+
+    unchanged = await hass.config_entries.options.async_configure(
+        invalid["flow_id"],
+        {
+            "read_url": {"enabled_for_profile": True, "name": "Read URL", "prefix": ""},
+            "mcp_port": 8091,
+            "allowed_ips": "",
+            "enable_gap_filling": True,
+            "max_entities_per_discovery": 50,
+        },
+    )
+    assert unchanged["type"] == "create_entry"
+    assert dict(system.data) == before
+    assert dict(system.options) == before_options
+
+    menu = await hass.config_entries.options.async_init(profile.entry_id)
+    form = await hass.config_entries.options.async_configure(
+        menu["flow_id"],
+        {"next_step_id": "profile_tools"},
+    )
+    saved = await hass.config_entries.options.async_configure(
+        form["flow_id"],
+        {
+            "read_url": {"enabled_for_profile": True, "name": "Read URL", "prefix": ""},
+            "mcp_port": 8091,
+            "allowed_ips": "192.168.1.9",
+            "enable_gap_filling": True,
+            "max_entities_per_discovery": 50,
+        },
+    )
+    assert saved["type"] == "create_entry"
+    assert system.data["allowed_ips"] == "192.168.1.9"
+    assert system.options["allowed_ips"] == "192.168.1.9"
+    assert system.data["mcp_port"] == 8091
+
+
+def _field_default(step, name):
+    for marker, selector in step["data_schema"].schema.items():
+        if getattr(marker, "schema", None) == name:
+            default = marker.default
+            return (default() if callable(default) else default), selector
+    raise AssertionError(name)
 
 
 async def test_profile_tools_allowlist_migrates_to_disabled_set(hass):

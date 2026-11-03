@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Nástroje",
         "description": "Tato nastavení jsou společná pro všechny profily. Nechte tajné pole prázdné, aby zůstala uložená hodnota. Vypněte nástroj, chcete-li ho v tomto profilu skrýt; nový nástroj zůstane zapnutý, dokud ho nevypnete.",
+        "data": {
+          "mcp_port": "Port serveru MCP (sdílený všemi profily)",
+          "allowed_ips": "Další povolené IP adresy a rozsahy (sdílené všemi profily)",
+          "enable_gap_filling": "Chytrý index entit (sdílený všemi profily)",
+          "max_entities_per_discovery": "Maximum entit na jedno hledání (sdílené všemi profily)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Tato předpona se stále kryje s jiným nástrojem. Zvolte jinou."
+      "duplicate_tool_name": "Tato předpona se stále kryje s jiným nástrojem. Zvolte jinou.",
+      "invalid_ip": "Neplatny format IP adresy nebo CIDR rozsahu. Pouzijte hodnoty oddelene carkou jako: 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Verktøy",
         "description": "Disse innstillingene deles av alle profiler. La en hemmelighet stå tom for å beholde den lagrede verdien. Slå av et verktøy for å skjule det for denne profilen; et nytt verktøy forblir på til du slår det av.",
+        "data": {
+          "mcp_port": "MCP-serverport (deles av alle profiler)",
+          "allowed_ips": "Ekstra tillatte IP-adresser/områder (deles av alle profiler)",
+          "enable_gap_filling": "Smart entitetsindeks (deles av alle profiler)",
+          "max_entities_per_discovery": "Maks antall entiteter per søk (deles av alle profiler)"
+        },
+        "data_description": {
+          "mcp_port": "Takes effect after a Home Assistant restart.",
+          "allowed_ips": "Comma-separated IPs or CIDR ranges, for example 172.30.0.0/16, 192.168.1.100. Applied without a restart.",
+          "enable_gap_filling": "Fills in device types the index does not know. Shared by every profile and applied without a restart.",
+          "max_entities_per_discovery": "How many entities one discovery can return (20-500). Shared by every profile and applied without a restart."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Det prefikset kolliderer fortsatt med et annet verktøy. Velg et annet."
+      "duplicate_tool_name": "Det prefikset kolliderer fortsatt med et annet verktøy. Velg et annet.",
+      "invalid_ip": "Ugyldig IP-adresse- eller CIDR-omradeformat. Bruk kommaseparerte verdier som: 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

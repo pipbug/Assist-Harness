@@ -191,6 +191,18 @@
       "profile_tools": {
         "title": "Hulpmiddelen",
         "description": "Deze instellingen worden door elk profiel gedeeld. Laat een geheim leeg om de opgeslagen waarde te houden. Zet een tool uit om hem voor dit profiel te verbergen; een nieuwe tool blijft aan tot je hem uitzet.",
+        "data": {
+          "mcp_port": "MCP-serverpoort (gedeeld door alle profielen)",
+          "allowed_ips": "Extra toegestane IP's/bereiken (gedeeld door alle profielen)",
+          "enable_gap_filling": "Slimme entiteitsindex (gedeeld door alle profielen)",
+          "max_entities_per_discovery": "Maximaal aantal entiteiten per zoekactie (gedeeld door alle profielen)"
+        },
+        "data_description": {
+          "mcp_port": "Gaat in na een herstart van Home Assistant.",
+          "allowed_ips": "Kommagescheiden IP's of CIDR-bereiken, bijvoorbeeld 172.30.0.0/16, 192.168.1.100. Toegepast zonder herstart.",
+          "enable_gap_filling": "Vult apparaattypen aan die de index niet kent. Gedeeld door elk profiel en toegepast zonder herstart.",
+          "max_entities_per_discovery": "Hoeveel entiteiten één zoekactie mag teruggeven (20-500). Gedeeld door elk profiel en toegepast zonder herstart."
+        },
         "sections": {
           "brave": {
             "name": "{title_brave}",
@@ -785,7 +797,8 @@
     },
     "abort": {},
     "error": {
-      "duplicate_tool_name": "Dat voorvoegsel botst nog met een ander hulpmiddel. Kies een ander."
+      "duplicate_tool_name": "Dat voorvoegsel botst nog met een ander hulpmiddel. Kies een ander.",
+      "invalid_ip": "Ongeldig IP-adres of CIDR-bereikformaat. Gebruik kommagescheiden waarden zoals: 172.30.0.0/16, 192.168.1.100"
     }
   },
   "entity": {

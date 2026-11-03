@@ -112,19 +112,22 @@ class MCPServer:
         self.sse_clients = []  # Track SSE connections for notifications
         self.progress_queues = set()  # Track progress SSE clients
 
-        # Extract allowed IPs from LM Studio URL
-        self.allowed_ips = ["127.0.0.1", "::1"]  # Always allow localhost
+        self.refresh_allowed_ips()
 
-        # Get LM Studio URL from config
+        # Optional tools are loaded in start(), once config entries exist.
+        self.registry = None
+
+    def refresh_allowed_ips(self) -> None:
+        """Reread allowed IPs from the system entry without rebinding the port."""
+        self.allowed_ips = ["127.0.0.1", "::1"]
+
         lmstudio_url = DEFAULT_LMSTUDIO_URL
-        if entry:
-            # Check options first, then data
-            lmstudio_url = entry.options.get(
+        if self.entry:
+            lmstudio_url = self.entry.options.get(
                 CONF_LMSTUDIO_URL,
-                entry.data.get(CONF_LMSTUDIO_URL, DEFAULT_LMSTUDIO_URL),
+                self.entry.data.get(CONF_LMSTUDIO_URL, DEFAULT_LMSTUDIO_URL),
             )
 
-        # Extract hostname/IP from LM Studio URL
         try:
             parsed = urlparse(lmstudio_url)
             lmstudio_host = parsed.hostname or parsed.netloc.split(":")[0]
@@ -137,14 +140,12 @@ class MCPServer:
         except Exception as e:
             _LOGGER.warning("Could not parse LM Studio URL '%s': %s", lmstudio_url, e)
 
-        # Add user-configured allowed IPs/CIDR ranges (shared setting)
         allowed_ips_str = self._get_shared_setting(
             CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS
         )
         if allowed_ips_str:
-            # Parse comma-separated list
             additional_ips = [
-                ip.strip() for ip in allowed_ips_str.split(",") if ip.strip()
+                ip.strip() for ip in str(allowed_ips_str).split(",") if ip.strip()
             ]
             for ip_entry in additional_ips:
                 if ip_entry not in self.allowed_ips:
@@ -156,9 +157,6 @@ class MCPServer:
                 )
 
         _LOGGER.info("MCP server allowed IPs/ranges: %s", self.allowed_ips)
-
-        # Optional tools are loaded in start(), once config entries exist.
-        self.registry = None
 
     def _get_shared_setting(self, key: str, default: Any) -> Any:
         """Get a shared setting from system entry with fallback to profile entry."""
