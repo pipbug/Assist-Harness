@@ -108,7 +108,7 @@ class ReadUrlTool:
 
         try:
             headers = {
-                "User-Agent": "Mozilla/5.0 (compatible; ha-lmstudio-mcp/1.0)"
+                "User-Agent": "Mozilla/5.0 (compatible; AssistHarness/0.20.0)"
             }
 
             async with aiohttp.ClientSession() as session:
@@ -275,3 +275,36 @@ class ReadUrlTool:
         text = re.sub(r'\s+', ' ', text)
 
         return text.strip()
+
+
+from .base import Tool, ToolInstance, apply_prefix, strip_prefix
+import voluptuous as vol
+
+
+class _Registered(Tool):
+
+    id = "read_url"
+    name = "Read URL"
+    description = "Read and extract text from a web page. Independent of web search."
+    shared = True
+    allow_multiple = True
+    secrets = frozenset()
+    config_schema = vol.Schema({})
+
+    async def async_setup(self, hass, instance: ToolInstance) -> None:
+        runtime = ReadUrlTool(hass)
+        await runtime.initialize()
+        instance.runtime = runtime
+
+    async def async_teardown(self, hass, instance: ToolInstance) -> None:
+        instance.runtime = None
+
+    def definitions(self, hass, instance: ToolInstance):
+        runtime = instance.runtime or ReadUrlTool(hass)
+        return apply_prefix(instance, runtime.get_tool_definitions())
+
+    async def async_call(self, hass, instance, tool_name, arguments):
+        return await instance.runtime.handle_call(strip_prefix(instance, tool_name), arguments)
+
+
+TOOL = _Registered()

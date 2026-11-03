@@ -25,8 +25,6 @@ from .const import (
     MAX_ENTITIES_PER_DISCOVERY,
     CONF_LMSTUDIO_URL,
     CONF_ALLOWED_IPS,
-    CONF_SEARCH_PROVIDER,
-    CONF_ENABLE_CUSTOM_TOOLS,
     DEFAULT_LMSTUDIO_URL,
     DEFAULT_ALLOWED_IPS,
 )
@@ -159,8 +157,8 @@ class MCPServer:
 
         _LOGGER.info("MCP server allowed IPs/ranges: %s", self.allowed_ips)
 
-        # Custom tools will be initialized in start() after system entry exists
-        self.custom_tools = None
+        # Optional tools are loaded in start(), once config entries exist.
+        self.registry = None
 
     def _get_shared_setting(self, key: str, default: Any) -> Any:
         """Get a shared setting from system entry with fallback to profile entry."""
@@ -182,18 +180,6 @@ class MCPServer:
 
         # Return default
         return default
-
-    def _get_search_provider(self) -> str:
-        """Get search provider (shared setting) with backward compatibility."""
-        provider = self._get_shared_setting(CONF_SEARCH_PROVIDER, None)
-        if provider:
-            return provider
-
-        # Backward compat: if old enable_custom_tools was True, default to "brave"
-        if self._get_shared_setting(CONF_ENABLE_CUSTOM_TOOLS, False):
-            return "brave"
-
-        return "none"
 
     async def start(self) -> None:
         """Start the MCP server."""
@@ -221,22 +207,20 @@ class MCPServer:
             self.site = web.TCPSite(self.runner, "0.0.0.0", self.port)
             await self.site.start()
 
-            # Create and initialize custom tools if search provider is enabled
-            # Done here (not in __init__) so system entry exists for reading settings
-            search_provider = self._get_search_provider()
-            # [kestrel] always load custom tools: Mem0 tools don't depend on search
-            if True:
-                try:
-                    from .custom_tools import CustomToolsLoader
+            # Optional tools come from the registry. A tool that fails to set
+            # up is omitted; the built-in Home Assistant tools still start.
+            try:
+                from .tools.registry import get_registry
 
-                    self.custom_tools = CustomToolsLoader(self.hass, self.entry)
-                    await self.custom_tools.initialize()
-                    _LOGGER.info(
-                        "✅ Custom tools initialized for search provider: %s",
-                        search_provider,
-                    )
-                except Exception as e:
-                    _LOGGER.error(f"Failed to initialize custom tools: {e}")
+                self.registry = get_registry(self.hass)
+                await self.registry.async_reload()
+                _LOGGER.info(
+                    "Tools ready: %s",
+                    ", ".join(tool["name"] for tool in self.registry.definitions())
+                    or "none",
+                )
+            except Exception as err:
+                _LOGGER.error("Failed to initialize tools: %s", err)
 
             _LOGGER.info(
                 "✅ MCP server started successfully on http://0.0.0.0:%d", self.port
@@ -273,6 +257,9 @@ class MCPServer:
     async def stop(self) -> None:
         """Stop the MCP server."""
         _LOGGER.info("Stopping MCP server")
+
+        if self.registry is not None:
+            await self.registry.async_teardown_all()
 
         if self.site:
             await self.site.stop()
@@ -1052,13 +1039,14 @@ class MCPServer:
             },
         ]
 
-        # Add custom tool definitions if enabled
-        if self.custom_tools:
+        # Optional tools. Refresh first so an external server can reconnect,
+        # and so a server that is down contributes nothing.
+        if self.registry:
             try:
-                custom_tool_defs = self.custom_tools.get_tool_definitions()
-                tools.extend(custom_tool_defs)
-            except Exception as e:
-                _LOGGER.error(f"Failed to get custom tool definitions: {e}")
+                await self.registry.async_refresh()
+                tools.extend(self.registry.definitions())
+            except Exception as err:
+                _LOGGER.error("Failed to get tool definitions: %s", err)
 
         # nextCursor is optional - omit if not paginating
         return {"tools": tools}
@@ -1094,19 +1082,16 @@ class MCPServer:
             return await self.tool_run_automation(arguments)
         elif tool_name == "get_entity_history":
             return await self.tool_get_entity_history(arguments)
-        else:
-            # Check if it's a custom tool
-            if self.custom_tools and self.custom_tools.is_custom_tool(tool_name):
-                return await self.custom_tools.handle_tool_call(tool_name, arguments)
-            else:
-                # Per MCP spec an unknown tool is a tool-level error result,
-                # not a protocol error (raising here surfaced as -32603/HTTP 500)
-                return {
-                    "content": [
-                        {"type": "text", "text": f"❌ Unknown tool: {tool_name}"}
-                    ],
-                    "isError": True,
-                }
+        elif self.registry and self.registry.handles(tool_name):
+            return await self.registry.async_call(tool_name, arguments)
+        # Per MCP spec an unknown tool is a tool-level error result,
+        # not a protocol error (raising here surfaced as -32603/HTTP 500)
+        return {
+            "content": [
+                {"type": "text", "text": f"❌ Unknown tool: {tool_name}"}
+            ],
+            "isError": True,
+        }
 
     async def tool_discover_entities(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Discover entities based on criteria with progress notifications."""

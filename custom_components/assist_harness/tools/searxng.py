@@ -133,3 +133,41 @@ class SearXNGSearchTool:
                     "text": f"❌ Search error: {str(e)}"
                 }]
             }
+
+
+from .base import Tool, ToolInstance, apply_prefix, strip_prefix
+import voluptuous as vol
+
+
+class _Registered(Tool):
+
+    id = "searxng"
+    name = "SearXNG Search"
+    description = "Search the web with your own SearXNG server. Add another instance for a second URL."
+    shared = True
+    allow_multiple = True
+    secrets = frozenset()
+    config_schema = vol.Schema({vol.Required("url", default=""): str})
+
+    async def async_setup(self, hass, instance: ToolInstance) -> None:
+        runtime = SearXNGSearchTool(hass, (instance.config or {}).get("url") or "")
+        # An empty URL used to raise during initialize and still leave the tool
+        # registered. Keep the tool listed; calls fail until a URL is set.
+        try:
+            await runtime.initialize()
+        except ValueError:
+            pass
+        instance.runtime = runtime
+
+    async def async_teardown(self, hass, instance: ToolInstance) -> None:
+        instance.runtime = None
+
+    def definitions(self, hass, instance: ToolInstance):
+        runtime = instance.runtime or SearXNGSearchTool(hass, (instance.config or {}).get("url") or "")
+        return apply_prefix(instance, runtime.get_tool_definitions())
+
+    async def async_call(self, hass, instance, tool_name, arguments):
+        return await instance.runtime.handle_call(strip_prefix(instance, tool_name), arguments)
+
+
+TOOL = _Registered()

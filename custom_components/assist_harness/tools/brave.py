@@ -131,3 +131,36 @@ class BraveSearchTool:
                     "text": f"❌ Search error: {str(e)}"
                 }]
             }
+
+
+from .base import Tool, ToolInstance, apply_prefix, strip_prefix
+import voluptuous as vol
+
+
+class _Registered(Tool):
+
+    id = "brave"
+    name = "Brave Search"
+    description = "Search the web with the Brave Search API. Needs an API key."
+    shared = True
+    allow_multiple = True
+    secrets = frozenset({"api_key"})
+    config_schema = vol.Schema({vol.Optional("api_key", default=""): str})
+
+    async def async_setup(self, hass, instance: ToolInstance) -> None:
+        runtime = BraveSearchTool(hass, (instance.config or {}).get("api_key") or "")
+        await runtime.initialize()
+        instance.runtime = runtime
+
+    async def async_teardown(self, hass, instance: ToolInstance) -> None:
+        instance.runtime = None
+
+    def definitions(self, hass, instance: ToolInstance):
+        runtime = instance.runtime or BraveSearchTool(hass, "")
+        return apply_prefix(instance, runtime.get_tool_definitions())
+
+    async def async_call(self, hass, instance, tool_name, arguments):
+        return await instance.runtime.handle_call(strip_prefix(instance, tool_name), arguments)
+
+
+TOOL = _Registered()

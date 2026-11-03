@@ -16,19 +16,11 @@ from .const import (
     DEFAULT_MCP_PORT,
     CONF_TECHNICAL_PROMPT,
     CONF_PROFILE_NAME,
-    CONF_ENABLE_CUSTOM_TOOLS,
-    CONF_BRAVE_API_KEY,
-    CONF_SEARXNG_URL,
     CONF_ALLOWED_IPS,
-    CONF_SEARCH_PROVIDER,
     CONF_ENABLE_GAP_FILLING,
     CONF_SERVER_TYPE,
     CONF_TIMEOUT,
-    DEFAULT_ENABLE_CUSTOM_TOOLS,
-    DEFAULT_BRAVE_API_KEY,
-    DEFAULT_SEARXNG_URL,
     DEFAULT_ALLOWED_IPS,
-    DEFAULT_SEARCH_PROVIDER,
     DEFAULT_ENABLE_GAP_FILLING,
     DEFAULT_TIMEOUT,
     SERVER_TYPE_OPENCLAW,
@@ -90,32 +82,24 @@ async def ensure_system_entry(hass: HomeAssistant) -> ConfigEntry:
         if first_profile:
             _LOGGER.info("Copying shared settings from profile: %s",
                         first_profile.data.get(CONF_PROFILE_NAME, "Unknown"))
+            from .migration import migrate_mapping, shared_type_ids
+            from .tools.registry import CONF_TOOLS
 
-            # Get search provider with backward compatibility for enable_custom_tools
-            search_provider = first_profile.options.get(
-                CONF_SEARCH_PROVIDER,
-                first_profile.data.get(CONF_SEARCH_PROVIDER)
+            # Re-run the legacy conversion on a copy so a profile that still
+            # holds search settings (no system entry yet) contributes its tools.
+            _data, migrated_options = migrate_mapping(
+                first_profile.data, first_profile.options, convert_search=True
             )
-            # Backward compat: if search_provider not set but enable_custom_tools was True, use "brave"
-            if not search_provider:
-                if first_profile.options.get(CONF_ENABLE_CUSTOM_TOOLS, first_profile.data.get(CONF_ENABLE_CUSTOM_TOOLS, False)):
-                    search_provider = "brave"
-                else:
-                    search_provider = DEFAULT_SEARCH_PROVIDER
-
+            shared_ids = shared_type_ids()
+            shared_tools = [
+                tool
+                for tool in (migrated_options.get(CONF_TOOLS) or [])
+                if isinstance(tool, dict) and tool.get("type") in shared_ids
+            ]
             shared_settings = {
                 CONF_MCP_PORT: first_profile.options.get(
                     CONF_MCP_PORT,
                     first_profile.data.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)
-                ),
-                CONF_SEARCH_PROVIDER: search_provider,
-                CONF_BRAVE_API_KEY: first_profile.options.get(
-                    CONF_BRAVE_API_KEY,
-                    first_profile.data.get(CONF_BRAVE_API_KEY, DEFAULT_BRAVE_API_KEY)
-                ),
-                CONF_SEARXNG_URL: first_profile.options.get(
-                    CONF_SEARXNG_URL,
-                    first_profile.data.get(CONF_SEARXNG_URL, DEFAULT_SEARXNG_URL)
                 ),
                 CONF_ALLOWED_IPS: first_profile.options.get(
                     CONF_ALLOWED_IPS,
@@ -126,14 +110,13 @@ async def ensure_system_entry(hass: HomeAssistant) -> ConfigEntry:
                     first_profile.data.get(CONF_ENABLE_GAP_FILLING, DEFAULT_ENABLE_GAP_FILLING)
                 ),
             }
+            if shared_tools:
+                shared_settings[CONF_TOOLS] = shared_tools
         else:
             # No profiles exist yet (shouldn't happen in normal flow), use defaults
             _LOGGER.info("No existing profiles found, using default shared settings")
             shared_settings = {
                 CONF_MCP_PORT: DEFAULT_MCP_PORT,
-                CONF_SEARCH_PROVIDER: DEFAULT_SEARCH_PROVIDER,
-                CONF_BRAVE_API_KEY: DEFAULT_BRAVE_API_KEY,
-                CONF_SEARXNG_URL: DEFAULT_SEARXNG_URL,
                 CONF_ALLOWED_IPS: DEFAULT_ALLOWED_IPS,
                 CONF_ENABLE_GAP_FILLING: DEFAULT_ENABLE_GAP_FILLING,
             }
@@ -151,9 +134,9 @@ async def ensure_system_entry(hass: HomeAssistant) -> ConfigEntry:
         if system_entry is None:
             raise ConfigEntryNotReady("Failed to create system entry")
 
-        _LOGGER.info("✅ System entry created successfully with settings: mcp_port=%s, search_provider=%s",
+        _LOGGER.info("✅ System entry created successfully with settings: mcp_port=%s, tools=%s",
                     shared_settings.get(CONF_MCP_PORT),
-                    shared_settings.get(CONF_SEARCH_PROVIDER))
+                    len(shared_settings.get("tools") or []))
 
     return system_entry
 
@@ -344,10 +327,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady(f"Setup failed: {err}") from err
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Upgrade config entries to the tool registry."""
+    from .migration import async_migrate_entry as _migrate
+
+    return await _migrate(hass, entry)
+
+
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
+    """Handle options update.
+
+    Tool add/remove refreshes the registry in place. Other profile option
+    changes still reload that profile. The system entry has no platforms.
+    """
+    tools_only = hass.data.get(DOMAIN, {}).pop("tools_only_update", False)
+    registry = hass.data.get(DOMAIN, {}).get("tool_registry")
+    if registry is not None:
+        await registry.async_reload()
+    if tools_only or entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+        _LOGGER.debug("Tool configuration updated for %s", entry.title)
+        return
     _LOGGER.debug("Options updated for entry %s, reloading...", entry.entry_id)
-    # Reload the integration to apply new options (including search provider changes)
     await hass.config_entries.async_reload(entry.entry_id)
 
 

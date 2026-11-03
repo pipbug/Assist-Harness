@@ -7,8 +7,10 @@ the hosted Mem0 Platform when the URL is https://api.mem0.ai ("Authorization: To
 - ``schedule_turn_save()``: posts each finished turn to Mem0 for fact extraction
   as a background task, so it never delays the reply and a Mem0 outage only logs a warning.
 
-Settings are per profile (options ``mem0_enabled``, ``mem0_url``, ``mem0_api_key``,
-``mem0_user_id``). The shared MCP server uses the first profile with Mem0 enabled.
+Settings live on a per-profile ``mem0_memory`` tool (``mem0_enabled``, ``mem0_url``,
+``mem0_api_key``, ``mem0_user_id``). Flat options of that shape still work until
+migration. The shared MCP server uses the first profile with Mem0 enabled.
+Turn auto-save uses the profile that just spoke.
 """
 from __future__ import annotations
 
@@ -57,9 +59,15 @@ def begin_turn() -> None:
 
 
 def note_tool_call(tool_name: Optional[str]) -> None:
-    """Record that save_memory ran (or was attempted) in this turn."""
+    """Record that save_memory ran (or was attempted) in this turn.
+
+    A tool-name prefix (``home_save_memory``) still counts, so the turn
+    auto-save stays skipped after an explicit save.
+    """
     turn = _TURN.get()
-    if turn is not None and tool_name == "save_memory":
+    if turn is None or not tool_name:
+        return
+    if tool_name == "save_memory" or tool_name.endswith("_save_memory"):
         turn["save_memory"] = True
 
 
@@ -90,16 +98,37 @@ def is_platform(url: str) -> bool:
     return host == PLATFORM_HOST or host.endswith("." + PLATFORM_HOST)
 
 
-def _settings_of(entry) -> Optional[Dict[str, str]]:
+def _config_of(entry) -> Optional[Dict[str, Any]]:
+    """Return this entry's mem0_memory config, or legacy flat options."""
+    for source in (entry.options, entry.data):
+        if "tools" not in source:
+            continue
+        for tool in source.get("tools") or []:
+            if isinstance(tool, dict) and tool.get("type") == "mem0_memory":
+                return dict(tool.get("config") or {})
     opts = {**entry.data, **entry.options}
-    if not opts.get(CONF_MEM0_ENABLED):
+    if any(
+        key in opts
+        for key in (CONF_MEM0_ENABLED, CONF_MEM0_URL, CONF_MEM0_API_KEY, CONF_MEM0_USER_ID)
+    ):
+        return opts
+    return None
+
+
+def settings_from_config(config: Optional[Dict[str, Any]]) -> Optional[Dict[str, str]]:
+    """Normalize a mem0 config mapping. Disabled or missing config returns None."""
+    if not config or not config.get(CONF_MEM0_ENABLED):
         return None
-    url = (opts.get(CONF_MEM0_URL) or DEFAULT_MEM0_URL).rstrip("/")
+    url = (config.get(CONF_MEM0_URL) or DEFAULT_MEM0_URL).rstrip("/")
     return {
         "url": url,
-        "api_key": opts.get(CONF_MEM0_API_KEY) or "",
-        "user_id": opts.get(CONF_MEM0_USER_ID) or DEFAULT_MEM0_USER_ID,
+        "api_key": config.get(CONF_MEM0_API_KEY) or "",
+        "user_id": config.get(CONF_MEM0_USER_ID) or DEFAULT_MEM0_USER_ID,
     }
+
+
+def _settings_of(entry) -> Optional[Dict[str, str]]:
+    return settings_from_config(_config_of(entry))
 
 
 def get_settings(hass, entry=None) -> Optional[Dict[str, str]]:
@@ -191,6 +220,10 @@ class Mem0MemoryTool:
     def get_tool_definitions(self) -> List[Dict[str, Any]]:
         if get_settings(self.hass) is None:
             return []
+        return self._DEFINITION_BODIES()
+
+    @staticmethod
+    def _DEFINITION_BODIES() -> List[Dict[str, Any]]:
         return [
             {
                 "name": "recall_memory",
@@ -227,8 +260,9 @@ class Mem0MemoryTool:
             },
         ]
 
-    async def handle_call(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        settings = get_settings(self.hass)
+    async def handle_call(self, tool_name: str, arguments: Dict[str, Any], settings=None) -> Dict[str, Any]:
+        if settings is None:
+            settings = get_settings(self.hass)
         if not settings:
             return _text("Memory is not enabled.")
         try:
@@ -282,3 +316,64 @@ class Mem0MemoryTool:
             )
         except Exception as err:
             _LOGGER.warning("Mem0 save_memory failed: %s", err or type(err).__name__)
+
+
+from .base import Tool, ToolInstance, apply_prefix, strip_prefix
+
+
+class _Registered(Tool):
+    """Per-profile Mem0. One instance per profile keeps the previous behaviour."""
+
+    id = "mem0_memory"
+    name = "Mem0 memory"
+    description = (
+        "Long-term memory via Mem0. Enable it, set the server URL "
+        "(https://api.mem0.ai for the hosted platform), API key, and user id. "
+        "recall_memory and save_memory are listed while it is enabled, and each "
+        "finished turn is saved in the background."
+    )
+    shared = False
+    allow_multiple = False
+    secrets = frozenset({CONF_MEM0_API_KEY})
+    config_schema = vol.Schema(
+        {
+            vol.Required(CONF_MEM0_ENABLED, default=False): bool,
+            vol.Optional(CONF_MEM0_URL, default=DEFAULT_MEM0_URL): str,
+            vol.Optional(CONF_MEM0_API_KEY, default=""): str,
+            vol.Optional(CONF_MEM0_USER_ID, default=DEFAULT_MEM0_USER_ID): str,
+        }
+    )
+
+    async def async_setup(self, hass, instance: ToolInstance) -> None:
+        runtime = Mem0MemoryTool(hass)
+        await runtime.initialize()
+        instance.runtime = runtime
+
+    async def async_teardown(self, hass, instance: ToolInstance) -> None:
+        instance.runtime = None
+
+    def definitions(self, hass, instance: ToolInstance):
+        if settings_from_config(instance.config) is None:
+            return []
+        runtime = instance.runtime or Mem0MemoryTool(hass)
+        # The class hides definitions unless some profile is enabled. Build from
+        # its schema by asking with a temporary view of this instance's config.
+        raw = _definitions_for(instance.config)
+        return apply_prefix(instance, raw)
+
+    async def async_call(self, hass, instance, tool_name, arguments):
+        runtime = instance.runtime or Mem0MemoryTool(hass)
+        return await runtime.handle_call(
+            strip_prefix(instance, tool_name),
+            arguments,
+            settings_from_config(instance.config),
+        )
+
+
+def _definitions_for(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    if settings_from_config(config) is None:
+        return []
+    return Mem0MemoryTool._DEFINITION_BODIES()
+
+
+TOOL = _Registered()

@@ -2,12 +2,14 @@
 import logging
 from typing import Dict, Any, List
 
-try:
-    from ddgs import DDGS
-    _DDGS_LEGACY = False
-except ImportError:  # old environments where only duckduckgo-search is installed
-    from duckduckgo_search import DDGS
-    _DDGS_LEGACY = True
+def _load_ddgs():
+    """Import DuckDuckGo search lazily so the tool module loads without it."""
+    try:
+        from ddgs import DDGS
+        return DDGS, False
+    except ImportError:  # old environments where only duckduckgo-search is installed
+        from duckduckgo_search import DDGS
+        return DDGS, True
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,12 +96,13 @@ class DuckDuckGoSearchTool:
             # First arg is positional: the kwarg was renamed keywords= -> query=
             # in the ddgs package. Pin backend to DuckDuckGo; new ddgs defaults
             # to mixed backends (including Bing).
+            DDGS, legacy = _load_ddgs()
             raw_results = DDGS().text(
                 query,
                 max_results=count,
                 region="us-en",
                 safesearch="moderate",
-                backend="auto" if _DDGS_LEGACY else "duckduckgo",
+                backend="auto" if legacy else "duckduckgo",
             )
 
             # Normalize format to match Brave Search return structure
@@ -114,3 +117,36 @@ class DuckDuckGoSearchTool:
         except Exception as e:
             _LOGGER.error(f"DDG sync search failed: {e}")
             raise
+
+
+from .base import Tool, ToolInstance, apply_prefix, strip_prefix
+import voluptuous as vol
+
+
+class _Registered(Tool):
+
+    id = "duckduckgo"
+    name = "DuckDuckGo Search"
+    description = "Search the web with DuckDuckGo. No API key is required."
+    shared = True
+    allow_multiple = True
+    secrets = frozenset()
+    config_schema = vol.Schema({})
+
+    async def async_setup(self, hass, instance: ToolInstance) -> None:
+        runtime = DuckDuckGoSearchTool(hass)
+        await runtime.initialize()
+        instance.runtime = runtime
+
+    async def async_teardown(self, hass, instance: ToolInstance) -> None:
+        instance.runtime = None
+
+    def definitions(self, hass, instance: ToolInstance):
+        runtime = instance.runtime or DuckDuckGoSearchTool(hass)
+        return apply_prefix(instance, runtime.get_tool_definitions())
+
+    async def async_call(self, hass, instance, tool_name, arguments):
+        return await instance.runtime.handle_call(strip_prefix(instance, tool_name), arguments)
+
+
+TOOL = _Registered()

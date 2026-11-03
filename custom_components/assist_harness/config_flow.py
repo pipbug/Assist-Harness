@@ -25,7 +25,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .localization import get_language_instruction, get_follow_up_phrases, get_end_words
-from .custom_tools import mem0_memory  # [kestrel]
+from .tool_flow import ToolFlowMixin
 
 from .const import (
     DOMAIN,
@@ -50,10 +50,7 @@ from .const import (
     CONF_THINKING_MODE,
     DEFAULT_THINKING_MODE,
     THINKING_MODES,
-    CONF_ENABLE_CUSTOM_TOOLS,
-    CONF_BRAVE_API_KEY,
     CONF_ALLOWED_IPS,
-    CONF_SEARCH_PROVIDER,
     CONF_ENABLE_GAP_FILLING,
     CONF_MAX_ENTITIES_PER_DISCOVERY,
     DEFAULT_MAX_ENTITIES_PER_DISCOVERY,
@@ -110,10 +107,7 @@ from .const import (
     DEFAULT_MAX_HISTORY,
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_DEBUG_MODE,
-    DEFAULT_ENABLE_CUSTOM_TOOLS,
-    DEFAULT_BRAVE_API_KEY,
     DEFAULT_ALLOWED_IPS,
-    DEFAULT_SEARCH_PROVIDER,
     DEFAULT_ENABLE_GAP_FILLING,
     DEFAULT_OLLAMA_KEEP_ALIVE,
     DEFAULT_OLLAMA_NUM_CTX,
@@ -126,8 +120,6 @@ from .const import (
     GEMINI_BASE_URL,
     ANTHROPIC_BASE_URL,
     OPENROUTER_BASE_URL,
-    CONF_SEARXNG_URL,
-    DEFAULT_SEARXNG_URL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -534,7 +526,8 @@ def _openclaw_session_schema(
 class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Assist Harness."""
 
-    VERSION = 1
+    VERSION = 2
+    MINOR_VERSION = 1
 
     def __init__(self) -> None:
         """Initialize."""
@@ -542,12 +535,48 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.step2_data: dict[str, Any] = {}
         self.step3_data: dict[str, Any] = {}
         self.step4_data: dict[str, Any] = {}
+        self._import_checked = False
+
+    def _offer_mcp_assist_import(self) -> bool:
+        """Offer a one-time import when this integration has no entries yet."""
+        if self.hass.config_entries.async_entries(DOMAIN):
+            return False
+        return bool(self.hass.config_entries.async_entries("mcp_assist"))
+
+    async def async_step_import_offer(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask to copy existing MCP Assist entries. Never changes those entries."""
+        if user_input is not None:
+            if user_input.get("import_existing"):
+                from .migration import async_import_mcp_assist
+
+                await async_import_mcp_assist(self.hass)
+                return self.async_abort(reason="import_success")
+            return await self.async_step_user()
+
+        count = len(self.hass.config_entries.async_entries("mcp_assist"))
+        return self.async_show_form(
+            step_id="import_offer",
+            data_schema=vol.Schema(
+                {vol.Required("import_existing", default=True): bool}
+            ),
+            description_placeholders={"count": str(count)},
+        )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle step 1 - profile name and server type."""
         errors: dict[str, str] = {}
+
+        if (
+            user_input is None
+            and not self._import_checked
+            and self._offer_mcp_assist_import()
+        ):
+            self._import_checked = True
+            return await self.async_step_import_offer()
 
         if user_input is not None:
             # Validate profile name is not empty
@@ -967,15 +996,6 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_MCP_PORT: existing_entry.data.get(
                                 CONF_MCP_PORT, mcp_port
                             ),
-                            CONF_SEARCH_PROVIDER: existing_entry.data.get(
-                                CONF_SEARCH_PROVIDER, DEFAULT_SEARCH_PROVIDER
-                            ),
-                            CONF_BRAVE_API_KEY: existing_entry.data.get(
-                                CONF_BRAVE_API_KEY, DEFAULT_BRAVE_API_KEY
-                            ),
-                            CONF_SEARXNG_URL: existing_entry.data.get(
-                                CONF_SEARXNG_URL, DEFAULT_SEARXNG_URL
-                            ),
                             CONF_ALLOWED_IPS: existing_entry.data.get(
                                 CONF_ALLOWED_IPS, DEFAULT_ALLOWED_IPS
                             ),
@@ -1247,28 +1267,6 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         mcp_schema = vol.Schema(
             {
                 vol.Required(CONF_MCP_PORT, default=DEFAULT_MCP_PORT): vol.Coerce(int),
-                vol.Required(
-                    CONF_SEARCH_PROVIDER, default=DEFAULT_SEARCH_PROVIDER
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            {"value": "none", "label": "Disabled"},
-                            {"value": "duckduckgo", "label": "DuckDuckGo"},
-                            {
-                                "value": "brave",
-                                "label": "Brave Search (requires API key)",
-                            },
-                            {
-                                "value": "searxng",
-                                "label": "SearXNG Search (requires local search server)",
-                            },
-                        ],
-                        mode=SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_BRAVE_API_KEY, default=DEFAULT_BRAVE_API_KEY
-                ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
                 vol.Optional(CONF_ALLOWED_IPS, default=DEFAULT_ALLOWED_IPS): str,
                 vol.Optional(
                     CONF_ENABLE_GAP_FILLING, default=DEFAULT_ENABLE_GAP_FILLING
@@ -1277,10 +1275,6 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_MAX_ENTITIES_PER_DISCOVERY,
                     default=DEFAULT_MAX_ENTITIES_PER_DISCOVERY,
                 ): vol.All(vol.Coerce(int), vol.Range(min=20, max=500)),
-                vol.Optional(
-                    CONF_SEARXNG_URL,
-                    default=DEFAULT_SEARXNG_URL
-                ): TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
             }
         )
 
@@ -1289,7 +1283,7 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=mcp_schema,
             errors=errors,
             description_placeholders={
-                "info": "⚠️ These settings will be shared across ALL profiles. Restart Home Assistant after making changes."
+                "info": "These settings are shared by every profile. The port is 8091 by default. Add search and other tools afterwards from the Tools menu; those apply without a restart."
             },
         )
 
@@ -1312,7 +1306,7 @@ class MCPAssistConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return MCPAssistOptionsFlow()
 
 
-class MCPAssistOptionsFlow(config_entries.OptionsFlow):
+class MCPAssistOptionsFlow(ToolFlowMixin, config_entries.OptionsFlow):
     """Handle options flow for Assist Harness integration."""
 
     def __init__(self) -> None:
@@ -1320,26 +1314,56 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
         super().__init__()
         self.profile_options: dict[str, Any] = {}
 
-    def _get_search_provider_default(self, options: dict, data: dict) -> str:
-        """Get default search provider with backward compatibility."""
-        # Check if search_provider is already set
-        provider = options.get(CONF_SEARCH_PROVIDER, data.get(CONF_SEARCH_PROVIDER))
-        if provider:
-            return provider
+    def _finish_profile(self):
+        """Save profile options without dropping tool records."""
+        merged = dict(self.profile_options)
+        for key in ("tools", "profile_tools"):
+            if key in self.config_entry.options and key not in merged:
+                value = self.config_entry.options[key]
+                merged[key] = list(value) if isinstance(value, list) else value
+        new_profile_name = merged.get(CONF_PROFILE_NAME)
+        old_profile_name = self.config_entry.options.get(
+            CONF_PROFILE_NAME, self.config_entry.data.get(CONF_PROFILE_NAME)
+        )
+        if new_profile_name and new_profile_name != old_profile_name:
+            server_type = self.config_entry.data.get(CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE)
+            server_display_map = {
+                SERVER_TYPE_LMSTUDIO: "LM Studio",
+                SERVER_TYPE_LLAMACPP: "llama.cpp",
+                SERVER_TYPE_OLLAMA: "Ollama",
+                SERVER_TYPE_OPENAI: "OpenAI",
+                SERVER_TYPE_GEMINI: "Gemini",
+                SERVER_TYPE_ANTHROPIC: "Claude",
+                SERVER_TYPE_OPENROUTER: "OpenRouter",
+                SERVER_TYPE_OPENCLAW: "OpenClaw",
+                SERVER_TYPE_HERMES: "Hermes Agent",
+                SERVER_TYPE_VLLM: "vLLM",
+            }
+            server_display = server_display_map.get(server_type, "LM Studio")
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                title=f"{server_display} - {new_profile_name}",
+            )
+        return self.async_create_entry(title="", data=merged)
 
-        # Backward compat: if old enable_custom_tools was True, default to "brave"
-        if options.get(
-            CONF_ENABLE_CUSTOM_TOOLS, data.get(CONF_ENABLE_CUSTOM_TOOLS, False)
-        ):
-            return "brave"
+    async def async_step_profile_next(self, user_input=None):
+        """Choose tools, shared server settings, or save the profile."""
+        return self.async_show_menu(
+            step_id="profile_next",
+            menu_options=["tools", "mcp_server", "save_profile"],
+        )
 
-        return DEFAULT_SEARCH_PROVIDER
+    async def async_step_save_profile(self, user_input=None):
+        """Persist the profile form."""
+        return self._finish_profile()
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
-        # Check if this is the system entry - skip directly to MCP server settings
         if self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-            return await self.async_step_mcp_server()
+            return self.async_show_menu(
+                step_id="system_menu",
+                menu_options=["mcp_server", "tools"],
+            )
 
         errors: dict[str, str] = {}
 
@@ -1380,9 +1404,9 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                     # A cleared optional key is omitted; store "" so it is removed
                     user_input.setdefault(CONF_API_KEY, "")
 
-                # Store profile settings and proceed to MCP server settings
+                # Store profile settings, then choose tools or server settings
                 self.profile_options = user_input
-                return await self.async_step_mcp_server()
+                return await self.async_step_profile_next()
 
         # Get current values from options, then data, then defaults
         options = self.config_entry.options
@@ -1828,10 +1852,6 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                 }
             )
 
-        # [kestrel] Mem0 long-term memory settings (per profile)
-        if server_type not in (SERVER_TYPE_OPENCLAW, SERVER_TYPE_HERMES):
-            schema_dict.update(mem0_memory.options_schema({**data, **options}))
-
         # Create the schema from the built dictionary
         options_schema = vol.Schema(
             _with_thinking_field(
@@ -1878,49 +1898,23 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                 _LOGGER.warning("Invalid allowed IPs in options: %s", error_msg)
 
             if not errors:
-                # Import get_system_entry
                 from . import get_system_entry
 
-                # Update system entry with shared MCP settings
                 system_entry = get_system_entry(self.hass)
                 if system_entry:
-                    self.hass.config_entries.async_update_entry(
-                        system_entry, data={**system_entry.data, **user_input}
-                    )
+                    # Keep an existing tool list stored in data from being
+                    # overwritten by the server-settings form.
+                    data = {**system_entry.data, **user_input}
+                    self.hass.config_entries.async_update_entry(system_entry, data=data)
                     _LOGGER.info("Updated system entry with shared MCP settings")
                 else:
                     _LOGGER.error("System entry not found when saving shared settings")
 
-                # Update profile entry with per-profile settings only
-                # Update entry title if profile name changed
-                new_profile_name = self.profile_options.get(CONF_PROFILE_NAME)
-                old_profile_name = self.config_entry.options.get(
-                    CONF_PROFILE_NAME, self.config_entry.data.get(CONF_PROFILE_NAME)
-                )
-                if new_profile_name and new_profile_name != old_profile_name:
-                    server_type = self.config_entry.data.get(
-                        CONF_SERVER_TYPE, DEFAULT_SERVER_TYPE
+                if self.config_entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                    return self.async_create_entry(
+                        title="", data=dict(self.config_entry.options)
                     )
-                    server_display_map = {
-                        SERVER_TYPE_LMSTUDIO: "LM Studio",
-                        SERVER_TYPE_LLAMACPP: "llama.cpp",
-                        SERVER_TYPE_OLLAMA: "Ollama",
-                        SERVER_TYPE_OPENAI: "OpenAI",
-                        SERVER_TYPE_GEMINI: "Gemini",
-                        SERVER_TYPE_ANTHROPIC: "Claude",
-                        SERVER_TYPE_OPENROUTER: "OpenRouter",
-                        SERVER_TYPE_OPENCLAW: "OpenClaw",
-                        SERVER_TYPE_HERMES: "Hermes Agent",
-                        SERVER_TYPE_VLLM: "vLLM",
-                    }
-                    server_display = server_display_map.get(server_type, "LM Studio")
-                    self.hass.config_entries.async_update_entry(
-                        self.config_entry,
-                        title=f"{server_display} - {new_profile_name}",
-                    )
-
-                # Save profile settings only (not shared settings)
-                return self.async_create_entry(title="", data=self.profile_options)
+                return self._finish_profile()
 
         # Get current values from system entry
         from . import get_system_entry
@@ -1945,33 +1939,6 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                         CONF_MCP_PORT, sys_data.get(CONF_MCP_PORT, DEFAULT_MCP_PORT)
                     ),
                 ): vol.Coerce(int),
-                vol.Required(
-                    CONF_SEARCH_PROVIDER,
-                    default=self._get_search_provider_default(sys_options, sys_data),
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            {"value": "none", "label": "Disabled"},
-                            {"value": "duckduckgo", "label": "DuckDuckGo"},
-                            {
-                                "value": "brave",
-                                "label": "Brave Search (requires API key)",
-                            },
-                            {
-                                "value": "searxng",
-                                "label": "SearXNG Search (requires local search server)",
-                            },
-                        ],
-                        mode=SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_BRAVE_API_KEY,
-                    default=sys_options.get(
-                        CONF_BRAVE_API_KEY,
-                        sys_data.get(CONF_BRAVE_API_KEY, DEFAULT_BRAVE_API_KEY),
-                    ),
-                ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
                 vol.Optional(
                     CONF_ALLOWED_IPS,
                     default=sys_options.get(
@@ -1988,13 +1955,6 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
                         ),
                     ),
                 ): bool,
-                vol.Optional(
-                    CONF_SEARXNG_URL,
-                    default=sys_options.get(
-                        CONF_SEARXNG_URL,
-                        sys_data.get(CONF_SEARXNG_URL, DEFAULT_SEARXNG_URL),
-                    ),
-                ): TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
                 vol.Optional(
                     CONF_MAX_ENTITIES_PER_DISCOVERY,
                     default=sys_options.get(
@@ -2013,7 +1973,7 @@ class MCPAssistOptionsFlow(config_entries.OptionsFlow):
             data_schema=mcp_schema,
             errors=errors,
             description_placeholders={
-                "warning": "⚠️ These settings are shared across ALL Assist Harness profiles. Restart Home Assistant after making changes."
+                "warning": "These settings are shared by every profile. Port changes need a restart. Tools are changed from the Tools menu and apply immediately."
             },
         )
 

@@ -48,11 +48,6 @@ from .const import (
     CONF_CONTROL_HA,
     CONF_OLLAMA_KEEP_ALIVE,
     CONF_OLLAMA_NUM_CTX,
-    CONF_SEARCH_PROVIDER,
-    CONF_BRAVE_API_KEY,
-    CONF_ALLOWED_IPS,
-    CONF_ENABLE_GAP_FILLING,
-    CONF_ENABLE_CUSTOM_TOOLS,
     CONF_FOLLOW_UP_PHRASES,
     CONF_END_WORDS,
     CONF_CLEAN_RESPONSES,
@@ -68,9 +63,6 @@ from .const import (
     DEFAULT_FOLLOW_UP_MODE,
     DEFAULT_RESPONSE_MODE,
     DEFAULT_MCP_PORT,
-    DEFAULT_SEARCH_PROVIDER,
-    DEFAULT_BRAVE_API_KEY,
-    DEFAULT_ALLOWED_IPS,
     DEFAULT_ENABLE_GAP_FILLING,
     DEFAULT_SERVER_TYPE,
     DEFAULT_API_KEY,
@@ -112,7 +104,7 @@ from .const import (
 )
 from .conversation_history import ConversationHistory
 from .localization import get_spoken_symbols
-from .custom_tools import mem0_memory  # [kestrel]
+from .tools import mem0_memory  # [kestrel]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,6 +124,15 @@ READ_ONLY_TOOLS = frozenset(
 
 # Longest tool result passed back to the model, to protect small contexts
 MAX_TOOL_RESULT_CHARS = 16000
+
+def _is_read_only_tool(name: str | None) -> bool:
+    """True for built-in read-only tools and prefixed copies such as home_search."""
+    if not name:
+        return False
+    if name in READ_ONLY_TOOLS:
+        return True
+    return any(name.endswith("_" + known) for known in READ_ONLY_TOOLS)
+
 
 # How long the LLM-formatted MCP tool list is reused before refetching
 MCP_TOOLS_CACHE_SECONDS = 30.0
@@ -388,20 +389,6 @@ class MCPAssistConversationEntity(ConversationEntity):
             CONF_OLLAMA_NUM_CTX,
             self.entry.data.get(CONF_OLLAMA_NUM_CTX, DEFAULT_OLLAMA_NUM_CTX),
         )
-
-    @property
-    def search_provider(self) -> str:
-        """Get search provider (shared setting) with backward compatibility."""
-        provider = self._get_shared_setting(CONF_SEARCH_PROVIDER, None)
-
-        if provider:
-            return provider
-
-        # Backward compat: if old enable_custom_tools was True, default to "brave"
-        if self._get_shared_setting(CONF_ENABLE_CUSTOM_TOOLS, False):
-            return "brave"
-
-        return "none"
 
     @property
     def attribution(self) -> str:
@@ -1546,13 +1533,25 @@ class MCPAssistConversationEntity(ConversationEntity):
 
         return messages
 
+    def _tool_cache_token(self) -> tuple:
+        """Invalidate the tool cache when the registry or this profile's selection changes."""
+        from .tools.registry import CONF_PROFILE_TOOLS, registry_generation
+
+        generation = registry_generation(self.hass)
+        if CONF_PROFILE_TOOLS in self.entry.options:
+            selected = tuple(self.entry.options.get(CONF_PROFILE_TOOLS) or [])
+        else:
+            selected = None
+        return (generation, selected)
+
     async def _get_mcp_tools(self) -> Optional[List[Dict[str, Any]]]:
         """Get the MCP tools in LLM format, reusing a recent fetch.
 
-        The list only changes with the MCP port or search provider, so it is
-        cached briefly instead of fetched over HTTP on every turn.
+        The list is cached briefly. The cache key includes the tool registry
+        generation and this profile's tool selection, so add/remove and
+        per-profile filtering show up without waiting out the cache.
         """
-        cache_key = (self.mcp_port, self.search_provider)
+        cache_key = (self.mcp_port, self._tool_cache_token())
         cached = getattr(self, "_mcp_tools_cache", None)
         now = time.monotonic()
         if cached and cached[0] == cache_key and now - cached[1] < MCP_TOOLS_CACHE_SECONDS:
@@ -1618,7 +1617,9 @@ class MCPAssistConversationEntity(ConversationEntity):
                         else:
                             _LOGGER.warning("⚠️ perform_action tool NOT found!")
 
-                        return openai_tools
+                        from .tools.registry import filter_tools_for_entry
+
+                        return filter_tools_for_entry(self.hass, self.entry, openai_tools)
                     return None
 
         except Exception as err:
@@ -1845,7 +1846,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         tool_names = [
             (tool_call.get("function") or {}).get("name") for tool_call in tool_calls
         ]
-        if len(tool_calls) > 1 and all(name in READ_ONLY_TOOLS for name in tool_names):
+        if len(tool_calls) > 1 and all(_is_read_only_tool(name) for name in tool_names):
             _LOGGER.debug("Running %d read-only tool calls concurrently", len(tool_calls))
             return list(
                 await asyncio.gather(
