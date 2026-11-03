@@ -189,20 +189,57 @@
         }
       },
       "profile_tools": {
-        "title": "Tools",
-        "description": "Choose which enabled tools this profile's agent can use. Home Assistant controls such as discover_entities and perform_action always stay available.",
+        "title": "도구",
+        "description": "이 프로필이 사용할 도구를 선택하거나, 도구를 열어 설정을 바꿉니다. 도구 설정은 모든 프로필이 공유합니다.",
+        "menu_options": {
+          "choose_tools": "도구 선택"
+        }
+      },
+      "choose_tools": {
+        "title": "도구 선택",
+        "description": "이 프로필에서 숨기려면 도구의 체크를 해제하세요. 새로 추가한 도구는 체크를 해제하기 전까지 켜져 있습니다. discover_entities와 perform_action 같은 Home Assistant 제어는 항상 사용할 수 있습니다.",
         "data": {
-          "use_all": "Use every enabled tool",
-          "profile_tools": "Tools for this profile"
+          "enabled_tools": "Tools for this profile"
         },
         "data_description": {
-          "use_all": "On by default. Turn this off to pick a subset of the tools added on the integration page.",
-          "profile_tools": "Only used when 'Use every enabled tool' is off."
+          "enabled_tools": "Ticked tools are available to this profile's agent."
+        }
+      },
+      "tool_settings": {
+        "title": "도구 설정",
+        "description": "이 설정은 모든 프로필이 공유합니다. 비밀 항목을 비워 두면 저장된 값이 유지됩니다.",
+        "data": {
+          "name": "Name",
+          "prefix": "Tool name prefix",
+          "api_key": "API key",
+          "url": "URL",
+          "transport": "Transport",
+          "bearer_token": "Bearer token",
+          "headers": "Extra headers",
+          "mem0_enabled": "Enable Mem0",
+          "mem0_url": "Mem0 server URL",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID"
+        },
+        "data_description": {
+          "name": "Shown in the tool list.",
+          "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+          "api_key": "From the provider dashboard.",
+          "url": "Server address.",
+          "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+          "bearer_token": "Optional. Sent as Authorization: Bearer.",
+          "headers": "Optional. One 'Name: value' header per line.",
+          "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+          "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+          "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+          "mem0_user_id": "Memories are stored for this user."
         }
       }
     },
     "abort": {},
-    "error": {}
+    "error": {
+      "duplicate_tool_name": "그 접두사는 다른 도구와 겹칩니다. 다른 접두사를 선택하세요."
+    }
   },
   "entity": {
     "conversation": {

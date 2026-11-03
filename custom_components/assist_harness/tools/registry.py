@@ -14,7 +14,8 @@ from .base import Tool, ToolInstance, normalize_prefix
 _LOGGER = logging.getLogger(__name__)
 
 CONF_TOOLS = "tools"
-CONF_PROFILE_TOOLS = "profile_tools"
+CONF_PROFILE_TOOLS = "profile_tools"  # v3.1 allowlist, removed by the minor migration
+CONF_DISABLED_TOOLS = "disabled_tools"
 _PACKAGE = "custom_components.assist_harness.tools"
 # Modules in this package that are not tool types.
 _SKIP = {"base", "registry"}
@@ -107,19 +108,19 @@ def tools_of(entry) -> list[dict[str, Any]]:
     return []
 
 
-def profile_selection(entry) -> list[str] | None:
-    """Instance keys this profile may use, or None for every enabled tool."""
+def disabled_tool_ids(entry) -> set[str]:
+    """Subentry ids this profile has switched off. Missing means none."""
     if entry is None:
-        return None
-    if CONF_PROFILE_TOOLS in entry.options:
-        value = entry.options.get(CONF_PROFILE_TOOLS)
-    elif CONF_PROFILE_TOOLS in entry.data:
-        value = entry.data.get(CONF_PROFILE_TOOLS)
+        return set()
+    if CONF_DISABLED_TOOLS in entry.options:
+        value = entry.options.get(CONF_DISABLED_TOOLS)
+    elif CONF_DISABLED_TOOLS in entry.data:
+        value = entry.data.get(CONF_DISABLED_TOOLS)
     else:
-        return None
-    if value is None:
-        return None
-    return [str(item) for item in value]
+        return set()
+    if not value:
+        return set()
+    return {str(item) for item in value}
 
 
 def _system_entry(hass: HomeAssistant):
@@ -193,6 +194,7 @@ class ToolRegistry:
                 config=config,
                 entry_id=entry_id or "",
                 shared=shared and tool.shared,
+                subentry_id=record.get("subentry_id"),
             )
             if instance.key in desired:
                 _LOGGER.warning("Duplicate tool instance %s ignored", instance.key)
@@ -213,6 +215,7 @@ class ToolRegistry:
             if current is not None and _same_config(current, desired_instance):
                 current.entry_id = desired_instance.entry_id
                 current.shared = desired_instance.shared
+                current.subentry_id = desired_instance.subentry_id
                 rebuilt[key] = current
                 continue
             if current is not None:
@@ -260,17 +263,23 @@ class ToolRegistry:
         return {definition["name"] for definition in self.definitions() if definition.get("name")}
 
     def allowed_names(self, entry) -> set[str] | None:
-        """Tool names a profile's agent may see, or None for all of them."""
-        selected = profile_selection(entry)
-        if selected is None:
+        """Tool names a profile's agent may see, or None when none are switched off.
+
+        ``disabled_tools`` lists subentry ids. An id that does not match a
+        current tool is ignored, so a deleted tool cannot hide a new one.
+        """
+        disabled = disabled_tool_ids(entry)
+        if not disabled:
             return None
-        chosen = set(selected)
         names: set[str] = set()
         for instance in self.instances.values():
-            if instance.key in chosen or instance.instance_id in chosen:
-                for definition in instance.cached_definitions:
-                    if definition.get("name"):
-                        names.add(definition["name"])
+            if instance.subentry_id and instance.subentry_id in disabled:
+                continue
+            if instance.instance_id in disabled:
+                continue
+            for definition in instance.cached_definitions:
+                if definition.get("name"):
+                    names.add(definition["name"])
         return names
 
     def handles(self, tool_name: str) -> bool:

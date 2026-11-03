@@ -28,7 +28,18 @@ from custom_components.assist_harness.tools.registry import (
 BUILTIN = "discover_entities"
 
 
-def _entry(hass, *, unique_id, data=None, options=None, domain=DOMAIN, version=2, title="Test"):
+def _entry(
+    hass,
+    *,
+    unique_id,
+    data=None,
+    options=None,
+    domain=DOMAIN,
+    version=2,
+    minor_version=1,
+    title="Test",
+    subentries_data=None,
+):
     entry = MockConfigEntry(
         domain=domain,
         unique_id=unique_id,
@@ -36,6 +47,8 @@ def _entry(hass, *, unique_id, data=None, options=None, domain=DOMAIN, version=2
         data=data or {},
         options=options or {},
         version=version,
+        minor_version=minor_version,
+        subentries_data=subentries_data,
     )
     entry.add_to_hass(hass)
     return entry
@@ -204,12 +217,22 @@ async def test_profile_tool_filter_defaults_to_all(hass):
     system = _entry(
         hass,
         unique_id=SYSTEM_ENTRY_UNIQUE_ID,
-        options={
-            "tools": [
-                {"instance_id": "brave", "type": "brave", "prefix": "", "config": {"api_key": "k"}},
-                {"instance_id": "read_url", "type": "read_url", "prefix": "", "config": {}},
-            ]
-        },
+        subentries_data=[
+            {
+                "subentry_id": "sub-brave",
+                "subentry_type": "brave",
+                "title": "Brave Search",
+                "unique_id": "brave",
+                "data": {"prefix": "", "api_key": "k"},
+            },
+            {
+                "subentry_id": "sub-read",
+                "subentry_type": "read_url",
+                "title": "Read URL",
+                "unique_id": "read_url",
+                "data": {"prefix": ""},
+            },
+        ],
     )
     profile = _entry(
         hass,
@@ -226,11 +249,13 @@ async def test_profile_tool_filter_defaults_to_all(hass):
     kept = [tool["function"]["name"] for tool in filter_tools_for_entry(hass, profile, tools)]
     assert kept == [BUILTIN, "search", "read_url"]
 
-    hass.config_entries.async_update_entry(profile, options={"profile_tools": ["read_url"]})
+    hass.config_entries.async_update_entry(profile, options={"disabled_tools": ["sub-brave"]})
     kept = [tool["function"]["name"] for tool in filter_tools_for_entry(hass, profile, tools)]
     assert kept == [BUILTIN, "read_url"]
 
-    hass.config_entries.async_update_entry(profile, options={"profile_tools": []})
+    hass.config_entries.async_update_entry(
+        profile, options={"disabled_tools": ["sub-brave", "sub-read", "already-deleted"]}
+    )
     kept = [tool["function"]["name"] for tool in filter_tools_for_entry(hass, profile, tools)]
     assert kept == [BUILTIN]
     assert system.entry_id

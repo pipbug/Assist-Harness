@@ -189,20 +189,57 @@
         }
       },
       "profile_tools": {
-        "title": "Tools",
-        "description": "Choose which enabled tools this profile's agent can use. Home Assistant controls such as discover_entities and perform_action always stay available.",
+        "title": "Εργαλεία",
+        "description": "Επιλέξτε ποια εργαλεία χρησιμοποιεί αυτό το προφίλ ή ανοίξτε ένα εργαλείο για να αλλάξετε τις ρυθμίσεις του. Οι ρυθμίσεις εργαλείων είναι κοινές για όλα τα προφίλ.",
+        "menu_options": {
+          "choose_tools": "Επιλογή εργαλείων"
+        }
+      },
+      "choose_tools": {
+        "title": "Επιλογή εργαλείων",
+        "description": "Αποεπιλέξτε ένα εργαλείο για να το κρύψετε από αυτό το προφίλ. Τα νέα εργαλεία μένουν ενεργά μέχρι να τα αποεπιλέξετε. Τα χειριστήρια του Home Assistant, όπως τα discover_entities και perform_action, παραμένουν πάντα διαθέσιμα.",
         "data": {
-          "use_all": "Use every enabled tool",
-          "profile_tools": "Tools for this profile"
+          "enabled_tools": "Tools for this profile"
         },
         "data_description": {
-          "use_all": "On by default. Turn this off to pick a subset of the tools added on the integration page.",
-          "profile_tools": "Only used when 'Use every enabled tool' is off."
+          "enabled_tools": "Ticked tools are available to this profile's agent."
+        }
+      },
+      "tool_settings": {
+        "title": "Ρυθμίσεις εργαλείου",
+        "description": "Αυτές οι ρυθμίσεις είναι κοινές για όλα τα προφίλ. Αφήστε ένα μυστικό πεδίο κενό για να κρατήσετε την αποθηκευμένη τιμή.",
+        "data": {
+          "name": "Name",
+          "prefix": "Tool name prefix",
+          "api_key": "API key",
+          "url": "URL",
+          "transport": "Transport",
+          "bearer_token": "Bearer token",
+          "headers": "Extra headers",
+          "mem0_enabled": "Enable Mem0",
+          "mem0_url": "Mem0 server URL",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID"
+        },
+        "data_description": {
+          "name": "Shown in the tool list.",
+          "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+          "api_key": "From the provider dashboard.",
+          "url": "Server address.",
+          "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+          "bearer_token": "Optional. Sent as Authorization: Bearer.",
+          "headers": "Optional. One 'Name: value' header per line.",
+          "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+          "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+          "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+          "mem0_user_id": "Memories are stored for this user."
         }
       }
     },
     "abort": {},
-    "error": {}
+    "error": {
+      "duplicate_tool_name": "Αυτό το πρόθεμα συγκρούεται ακόμη με άλλο εργαλείο. Επιλέξτε άλλο."
+    }
   },
   "entity": {
     "conversation": {

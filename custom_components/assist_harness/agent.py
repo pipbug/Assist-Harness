@@ -1535,14 +1535,11 @@ class MCPAssistConversationEntity(ConversationEntity):
 
     def _tool_cache_token(self) -> tuple:
         """Invalidate the tool cache when the registry or this profile's selection changes."""
-        from .tools.registry import CONF_PROFILE_TOOLS, registry_generation
+        from .tools.registry import CONF_DISABLED_TOOLS, registry_generation
 
         generation = registry_generation(self.hass)
-        if CONF_PROFILE_TOOLS in self.entry.options:
-            selected = tuple(self.entry.options.get(CONF_PROFILE_TOOLS) or [])
-        else:
-            selected = None
-        return (generation, selected)
+        disabled = tuple(self.entry.options.get(CONF_DISABLED_TOOLS) or [])
+        return (generation, disabled)
 
     async def _get_mcp_tools(self) -> Optional[List[Dict[str, Any]]]:
         """Get the MCP tools in LLM format, reusing a recent fetch.

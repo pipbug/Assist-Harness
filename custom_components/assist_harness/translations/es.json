@@ -189,20 +189,57 @@
         }
       },
       "profile_tools": {
-        "title": "Tools",
-        "description": "Choose which enabled tools this profile's agent can use. Home Assistant controls such as discover_entities and perform_action always stay available.",
+        "title": "Herramientas",
+        "description": "Elige qué herramientas usa este perfil, o abre una herramienta para cambiar sus ajustes. Los ajustes de las herramientas los comparten todos los perfiles.",
+        "menu_options": {
+          "choose_tools": "Elegir herramientas"
+        }
+      },
+      "choose_tools": {
+        "title": "Elegir herramientas",
+        "description": "Quita la marca de una herramienta para ocultarla en este perfil. Las herramientas nuevas siguen activadas hasta que las desmarques. Los controles de Home Assistant, como discover_entities y perform_action, siguen siempre disponibles.",
         "data": {
-          "use_all": "Use every enabled tool",
-          "profile_tools": "Tools for this profile"
+          "enabled_tools": "Tools for this profile"
         },
         "data_description": {
-          "use_all": "On by default. Turn this off to pick a subset of the tools added on the integration page.",
-          "profile_tools": "Only used when 'Use every enabled tool' is off."
+          "enabled_tools": "Ticked tools are available to this profile's agent."
+        }
+      },
+      "tool_settings": {
+        "title": "Ajustes de la herramienta",
+        "description": "Estos ajustes los comparten todos los perfiles. Deja un secreto en blanco para conservar el valor guardado.",
+        "data": {
+          "name": "Name",
+          "prefix": "Tool name prefix",
+          "api_key": "API key",
+          "url": "URL",
+          "transport": "Transport",
+          "bearer_token": "Bearer token",
+          "headers": "Extra headers",
+          "mem0_enabled": "Enable Mem0",
+          "mem0_url": "Mem0 server URL",
+          "mem0_api_key": "Mem0 API key",
+          "mem0_user_id": "Mem0 user ID"
+        },
+        "data_description": {
+          "name": "Shown in the tool list.",
+          "prefix": "Optional. Added to the start of each tool name so two instances do not collide.",
+          "api_key": "From the provider dashboard.",
+          "url": "Server address.",
+          "transport": "Streamable HTTP is the usual choice. Use SSE for older servers.",
+          "bearer_token": "Optional. Sent as Authorization: Bearer.",
+          "headers": "Optional. One 'Name: value' header per line.",
+          "mem0_enabled": "When this is off, recall and save are hidden and turns are not stored.",
+          "mem0_url": "Self-hosted server, or https://api.mem0.ai for the Mem0 platform.",
+          "mem0_api_key": "Sent as X-API-Key to a self-hosted server, or as a token to the Mem0 platform.",
+          "mem0_user_id": "Memories are stored for this user."
         }
       }
     },
     "abort": {},
-    "error": {}
+    "error": {
+      "duplicate_tool_name": "Ese prefijo todavía coincide con otra herramienta. Elige otro."
+    }
   },
   "entity": {
     "conversation": {

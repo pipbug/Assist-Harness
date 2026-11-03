@@ -143,9 +143,9 @@ def _mem0_configs(hass, entry=None) -> list[Dict[str, Any]]:
     except Exception:
         return configs
     from ..const import SYSTEM_ENTRY_UNIQUE_ID
-    from .registry import profile_selection
+    from .registry import disabled_tool_ids
 
-    selected = profile_selection(entry) if entry is not None else None
+    disabled = disabled_tool_ids(entry) if entry is not None else set()
     system = next((item for item in entries if item.unique_id == SYSTEM_ENTRY_UNIQUE_ID), None)
     owners = [system] if system is not None else []
     if system is None:
@@ -154,8 +154,9 @@ def _mem0_configs(hass, entry=None) -> list[Dict[str, Any]]:
         for subentry in getattr(owner, "subentries", {}).values():
             if subentry.subentry_type != "mem0_memory":
                 continue
-            identity = subentry.unique_id or subentry.subentry_id
-            if selected is not None and identity not in selected and subentry.subentry_id not in selected:
+            if subentry.subentry_id in disabled or (
+                subentry.unique_id and subentry.unique_id in disabled
+            ):
                 continue
             data = {key: value for key, value in dict(subentry.data).items() if key != "prefix"}
             configs.append(data)

@@ -348,7 +348,17 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     Tool add/remove refreshes the registry in place. Other profile option
     changes still reload that profile. The system entry has no platforms.
     """
-    tools_only = hass.data.get(DOMAIN, {}).pop("tools_only_update", False)
+    if entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+        from .migration import prune_disabled_tool_ids
+
+        prune_disabled_tool_ids(hass)
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    pending = domain_data.get("tools_only_entries")
+    scoped = False
+    if pending and entry.entry_id in pending:
+        pending.discard(entry.entry_id)
+        scoped = True
+    tools_only = scoped or bool(domain_data.pop("tools_only_update", False))
     registry = hass.data.get(DOMAIN, {}).get("tool_registry")
     if registry is not None:
         await registry.async_reload()

@@ -1,6 +1,7 @@
 """Pluggable optional tools for Assist Harness."""
 
 from .registry import (
+    CONF_DISABLED_TOOLS,
     CONF_PROFILE_TOOLS,
     CONF_TOOLS,
     ToolRegistry,
@@ -10,6 +11,7 @@ from .registry import (
 )
 
 __all__ = [
+    "CONF_DISABLED_TOOLS",
     "CONF_PROFILE_TOOLS",
     "CONF_TOOLS",
     "ToolRegistry",

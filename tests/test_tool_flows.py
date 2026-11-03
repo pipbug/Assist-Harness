@@ -11,8 +11,13 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.assist_harness.const import DOMAIN, SYSTEM_ENTRY_UNIQUE_ID
+from custom_components.assist_harness.mcp_server import MCPServer
 from custom_components.assist_harness.migration import async_migrate_entry
-from custom_components.assist_harness.tools.registry import async_ensure_tool_types, async_get_registry
+from custom_components.assist_harness.tools.registry import (
+    async_ensure_tool_types,
+    async_get_registry,
+    filter_tools_for_entry,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 STRINGS = json.loads((ROOT / "custom_components/assist_harness/strings.json").read_text())
@@ -274,18 +279,37 @@ async def test_system_options_and_profile_tool_selection(hass, monkeypatch):
     _lookup(STRINGS, "options.step.init.menu_options.profile")
     _lookup(STRINGS, "options.step.init.menu_options.profile_tools")
 
-    tools_step = await hass.config_entries.options.async_configure(
+    read_url = next(sub for sub in system.subentries.values() if sub.subentry_type == "read_url")
+    tools_menu = await hass.config_entries.options.async_configure(
         menu["flow_id"],
         {"next_step_id": "profile_tools"},
     )
+    assert tools_menu["type"] == "menu"
+    assert tools_menu["step_id"] == "profile_tools"
+    assert list(tools_menu["menu_options"])[0] == "choose_tools"
+    assert tools_menu["menu_options"]["choose_tools"] == "Choose tools"
+    assert tools_menu["menu_options"][f"tool_{read_url.subentry_id}"] == "Read URL"
+    assert "shared by every profile" in STRINGS["options"]["step"]["profile_tools"]["description"]
+    assert "use_all" not in STRINGS["options"]["step"].get("profile_tools", {})
+
+    tools_step = await hass.config_entries.options.async_configure(
+        tools_menu["flow_id"],
+        {"next_step_id": "choose_tools"},
+    )
     assert tools_step["type"] == "form"
-    assert tools_step["step_id"] == "profile_tools"
+    assert tools_step["step_id"] == "choose_tools"
+    defaults = []
+    for marker in tools_step["data_schema"].schema:
+        if getattr(marker, "schema", None) == "enabled_tools":
+            defaults = list(marker.default() if callable(marker.default) else marker.default)
+    assert defaults == [read_url.subentry_id]
     chosen = await hass.config_entries.options.async_configure(
         tools_step["flow_id"],
-        {"use_all": False, "profile_tools": ["read_url"]},
+        {"enabled_tools": []},
     )
     assert chosen["type"] == "create_entry"
-    assert profile.options["profile_tools"] == ["read_url"]
+    assert profile.options["disabled_tools"] == [read_url.subentry_id]
+    assert "profile_tools" not in profile.options
 
     menu_again = await hass.config_entries.options.async_init(profile.entry_id)
     profile_form = await hass.config_entries.options.async_configure(
@@ -365,3 +389,253 @@ async def test_v2_options_migrate_to_subentries(hass):
     assert by_type["mem0_memory"].data["mem0_api_key"] == "tok"
     assert by_type["mem0_memory"].data["mem0_user_id"] == "kira"
     assert by_type["mem0_memory"].data["mem0_enabled"] is True
+    assert system.minor_version == 2
+    assert profile.minor_version == 2
+    assert "profile_tools" not in profile.options
+    assert "disabled_tools" not in profile.options
+
+
+def _enabled_default(step) -> list:
+    for marker in step["data_schema"].schema:
+        if getattr(marker, "schema", None) == "enabled_tools":
+            default = marker.default
+            return list(default() if callable(default) else default)
+    return []
+
+
+async def _add_tool(hass, system, tool_id, payload):
+    created = await hass.config_entries.subentries.async_init(
+        (system.entry_id, tool_id),
+        context={"source": "user"},
+    )
+    await hass.config_entries.subentries.async_configure(created["flow_id"], payload)
+    return next(sub for sub in system.subentries.values() if sub.subentry_type == tool_id and sub.title == payload["name"])
+
+
+@pytest.mark.usefixtures("_flow_deps")
+async def test_profile_tools_menu_edits_shared_settings_and_keeps_new_tools(hass):
+    """Choosing tools and editing one from the profile updates the system subentry."""
+    from custom_components.assist_harness import async_setup_entry, async_update_options
+
+    await async_ensure_tool_types(hass)
+    system = _system(hass)
+    assert await async_setup_entry(hass, system)
+    profile = _profile(hass)
+    profile.add_update_listener(async_update_options)
+    brave = await _add_tool(
+        hass, system, "brave", {"name": "Brave Search", "prefix": "", "api_key": "abc"}
+    )
+    read_url = await _add_tool(
+        hass, system, "read_url", {"name": "Read URL", "prefix": ""}
+    )
+    reloads = []
+
+    async def _reload(entry_id):
+        reloads.append(entry_id)
+        return True
+
+    hass.config_entries.async_reload = _reload
+    registry = await async_get_registry(hass)
+    await registry.async_reload()
+    server = MCPServer(hass, 8091, system)
+    server.registry = registry
+
+    menu = await hass.config_entries.options.async_init(profile.entry_id)
+    tools_menu = await hass.config_entries.options.async_configure(
+        menu["flow_id"],
+        {"next_step_id": "profile_tools"},
+    )
+    assert list(tools_menu["menu_options"]) == [
+        "choose_tools",
+        f"tool_{brave.subentry_id}",
+        f"tool_{read_url.subentry_id}",
+    ]
+    assert tools_menu["menu_options"][f"tool_{brave.subentry_id}"] == "Brave Search"
+
+    choose = await hass.config_entries.options.async_configure(
+        tools_menu["flow_id"],
+        {"next_step_id": "choose_tools"},
+    )
+    assert _enabled_default(choose) == [brave.subentry_id, read_url.subentry_id]
+    saved = await hass.config_entries.options.async_configure(
+        choose["flow_id"],
+        {"enabled_tools": [brave.subentry_id]},
+    )
+    assert saved["type"] == "create_entry"
+    assert profile.options["disabled_tools"] == [read_url.subentry_id]
+
+    duck = await _add_tool(
+        hass, system, "duckduckgo", {"name": "DuckDuckGo", "prefix": "ddg"}
+    )
+    await hass.async_block_till_done()
+    await registry.async_reload()
+    menu = await hass.config_entries.options.async_init(profile.entry_id)
+    tools_menu = await hass.config_entries.options.async_configure(
+        menu["flow_id"],
+        {"next_step_id": "profile_tools"},
+    )
+    choose = await hass.config_entries.options.async_configure(
+        tools_menu["flow_id"],
+        {"next_step_id": "choose_tools"},
+    )
+    assert _enabled_default(choose) == [brave.subentry_id, duck.subentry_id]
+    listed = [
+        {"type": "function", "function": {"name": name, "description": "", "parameters": {}}}
+        for name in ("discover_entities", "search", "read_url", "ddg_search")
+    ]
+    kept = [tool["function"]["name"] for tool in filter_tools_for_entry(hass, profile, listed)]
+    assert kept == ["discover_entities", "search", "ddg_search"]
+
+    # Leave the chooser without saving and edit Brave from the menu.
+    hass.config_entries.options.async_abort(choose["flow_id"])
+    menu = await hass.config_entries.options.async_init(profile.entry_id)
+    tools_menu = await hass.config_entries.options.async_configure(
+        menu["flow_id"],
+        {"next_step_id": "profile_tools"},
+    )
+    form = await hass.config_entries.options.async_configure(
+        tools_menu["flow_id"],
+        {"next_step_id": f"tool_{brave.subentry_id}"},
+    )
+    assert form["type"] == "form"
+    assert form["step_id"] == "tool_settings"
+    assert "shared by every profile" in STRINGS["options"]["step"]["tool_settings"]["description"]
+    secret_default = None
+    for marker, selector in form["data_schema"].schema.items():
+        if getattr(marker, "schema", None) == "api_key":
+            assert isinstance(selector, TextSelector)
+            assert selector.config["type"] == TextSelectorType.PASSWORD
+            secret_default = marker.default() if callable(marker.default) else marker.default
+    assert secret_default == ""
+    back = await hass.config_entries.options.async_configure(
+        form["flow_id"],
+        {"name": "Web search", "prefix": "home", "api_key": ""},
+    )
+    assert back["type"] == "menu"
+    assert back["step_id"] == "profile_tools"
+    updated = system.subentries[brave.subentry_id]
+    assert updated.title == "Web search"
+    assert updated.data["prefix"] == "home_"
+    assert updated.data["api_key"] == "abc"
+    await hass.async_block_till_done()
+    names = [tool["name"] for tool in (await server.handle_tools_list())["tools"]]
+    assert "home_search" in names
+    assert "search" not in names
+    assert "read_url" in names
+    assert reloads == []
+
+    hass.config_entries.async_remove_subentry(system, read_url.subentry_id)
+    await hass.async_block_till_done()
+    assert "disabled_tools" not in profile.options
+    assert reloads == []
+
+
+async def test_profile_tools_allowlist_migrates_to_disabled_set(hass):
+    """An old allowlist becomes the tools that were left unticked."""
+    system = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=SYSTEM_ENTRY_UNIQUE_ID,
+        title="Shared MCP Server Settings",
+        version=3,
+        minor_version=2,
+        data={"mcp_port": 8091},
+        subentries_data=[
+            {
+                "subentry_id": "sub-brave",
+                "subentry_type": "brave",
+                "title": "Brave Search",
+                "unique_id": "brave",
+                "data": {"prefix": "", "api_key": "abc"},
+            },
+            {
+                "subentry_id": "sub-read",
+                "subentry_type": "read_url",
+                "title": "Read URL",
+                "unique_id": "read_url",
+                "data": {"prefix": ""},
+            },
+        ],
+    )
+    profile = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="assist_harness_ollama_kira",
+        title="Ollama - Kira",
+        version=3,
+        minor_version=1,
+        data={"profile_name": "Kira"},
+        options={"profile_tools": ["read_url"], "system_prompt": "be kind"},
+    )
+    everyone = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="assist_harness_ollama_all",
+        title="Ollama - All",
+        version=3,
+        minor_version=1,
+        data={"profile_name": "All"},
+        options={"system_prompt": "hi"},
+    )
+    waiting = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="assist_harness_ollama_waiting",
+        title="Ollama - Waiting",
+        version=3,
+        minor_version=1,
+        data={"profile_name": "Waiting"},
+        options={"profile_tools": ["read_url"]},
+    )
+    system.add_to_hass(hass)
+    profile.add_to_hass(hass)
+    everyone.add_to_hass(hass)
+    assert await async_migrate_entry(hass, profile)
+    assert await async_migrate_entry(hass, everyone)
+    assert profile.minor_version == 2
+    assert profile.options["disabled_tools"] == ["sub-brave"]
+    assert profile.options["system_prompt"] == "be kind"
+    assert "profile_tools" not in profile.options
+    assert everyone.minor_version == 2
+    assert "disabled_tools" not in everyone.options
+    assert "profile_tools" not in everyone.options
+
+    # No tool subentries yet, so the allowlist stays until a later startup.
+    await hass.config_entries.async_remove(system.entry_id)
+    waiting.add_to_hass(hass)
+    assert await async_migrate_entry(hass, waiting)
+    assert waiting.minor_version == 1
+    assert waiting.options["profile_tools"] == ["read_url"]
+
+
+async def test_system_migration_finishes_a_deferred_allowlist(hass):
+    """A profile migrated before the tools exist is converted with the system entry."""
+    system = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=SYSTEM_ENTRY_UNIQUE_ID,
+        title="Shared MCP Server Settings",
+        version=2,
+        data={"mcp_port": 8091},
+        options={
+            "tools": [
+                {"instance_id": "brave", "type": "brave", "prefix": "", "config": {"api_key": "abc"}},
+                {"instance_id": "read_url", "type": "read_url", "prefix": "", "config": {}},
+            ]
+        },
+    )
+    profile = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="assist_harness_ollama_kira",
+        title="Ollama - Kira",
+        version=3,
+        minor_version=1,
+        data={"profile_name": "Kira"},
+        options={"profile_tools": ["read_url"]},
+    )
+    system.add_to_hass(hass)
+    profile.add_to_hass(hass)
+    assert await async_migrate_entry(hass, profile)
+    assert profile.minor_version == 1
+    assert profile.options["profile_tools"] == ["read_url"]
+    assert await async_migrate_entry(hass, system)
+    assert system.minor_version == 2
+    assert profile.minor_version == 2
+    assert "profile_tools" not in profile.options
+    brave = next(sub for sub in system.subentries.values() if sub.subentry_type == "brave")
+    assert profile.options["disabled_tools"] == [brave.subentry_id]

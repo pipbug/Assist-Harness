@@ -527,7 +527,7 @@ class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Assist Harness."""
 
     VERSION = 3
-    MINOR_VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         """Initialize."""
@@ -1323,7 +1323,7 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
     def _finish_profile(self):
         """Save profile options without dropping tool records."""
         merged = dict(self.profile_options)
-        for key in ("tools", "profile_tools"):
+        for key in ("tools", "disabled_tools"):
             if key in self.config_entry.options and key not in merged:
                 value = self.config_entry.options[key]
                 merged[key] = list(value) if isinstance(value, list) else value
@@ -1361,46 +1361,86 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
             menu_options=["profile", "profile_tools"],
         )
 
+    def __getattr__(self, name: str):
+        """Open one tool's settings from a menu option named tool_<subentry id>."""
+        prefix = "async_step_tool_"
+        if not name.startswith(prefix):
+            raise AttributeError(name)
+        subentry_id = name[len(prefix) :]
+
+        async def _step(user_input=None):
+            self._editing_subentry_id = subentry_id
+            return await self.async_step_tool_settings(user_input)
+
+        return _step
+
+    def _system_entry(self):
+        for candidate in self.hass.config_entries.async_entries(DOMAIN):
+            if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                return candidate
+        return None
+
+    async def _choose_tools_label(self) -> str:
+        """Localized label for the first Tools menu option."""
+        from homeassistant.helpers.translation import async_get_translations
+
+        language = self.hass.config.language or "en"
+        translated = await async_get_translations(
+            self.hass, language, "options", [DOMAIN]
+        )
+        return (
+            translated.get(
+                f"component.{DOMAIN}.options.step.profile_tools.menu_options.choose_tools"
+            )
+            or "Choose tools"
+        )
+
     async def async_step_profile_tools(self, user_input=None):
-        """Choose which enabled tools this profile's agent can see."""
+        """Menu: choose which tools this profile uses, or edit a shared tool."""
+        menu: dict[str, str] = {"choose_tools": await self._choose_tools_label()}
+        system = self._system_entry()
+        if system is not None:
+            for subentry in system.subentries.values():
+                menu[f"tool_{subentry.subentry_id}"] = subentry.title
+        return self.async_show_menu(step_id="profile_tools", menu_options=menu)
+
+    async def async_step_choose_tools(self, user_input=None):
+        """Tick the tools this profile's agent can see.
+
+        Every tool is ticked unless this profile has switched it off. A tool
+        added later is absent from ``disabled_tools``, so it stays on.
+        """
         from homeassistant.helpers.selector import (
-            BooleanSelector,
             SelectSelector,
             SelectSelectorConfig,
             SelectSelectorMode,
         )
 
-        system = None
-        for candidate in self.hass.config_entries.async_entries(DOMAIN):
-            if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-                system = candidate
-                break
+        system = self._system_entry()
         choices = []
         if system is not None:
             for subentry in system.subentries.values():
-                value = subentry.unique_id or subentry.subentry_id
-                choices.append({"value": value, "label": subentry.title})
-        current = self.config_entry.options.get("profile_tools")
-        use_all_default = "profile_tools" not in self.config_entry.options
+                choices.append({"value": subentry.subentry_id, "label": subentry.title})
+        disabled = {
+            str(item)
+            for item in (self.config_entry.options.get("disabled_tools") or [])
+        }
+        ticked = [item["value"] for item in choices if item["value"] not in disabled]
         errors: dict[str, str] = {}
         if user_input is not None:
+            selected = {str(item) for item in (user_input.get("enabled_tools") or [])}
+            switched_off = [item["value"] for item in choices if item["value"] not in selected]
             merged = dict(self.config_entry.options)
-            if user_input.get("use_all", True):
-                merged.pop("profile_tools", None)
+            merged.pop("profile_tools", None)
+            if switched_off:
+                merged["disabled_tools"] = switched_off
             else:
-                merged["profile_tools"] = list(user_input.get("profile_tools") or [])
+                merged.pop("disabled_tools", None)
             self.hass.data.setdefault(DOMAIN, {})["tools_only_update"] = True
             return self.async_create_entry(title="", data=merged)
-        schema: dict[Any, Any] = {
-            vol.Required("use_all", default=use_all_default): BooleanSelector(),
-        }
+        schema: dict[Any, Any] = {}
         if choices:
-            schema[
-                vol.Optional(
-                    "profile_tools",
-                    default=list(current) if isinstance(current, list) else [item["value"] for item in choices],
-                )
-            ] = SelectSelector(
+            schema[vol.Optional("enabled_tools", default=ticked)] = SelectSelector(
                 SelectSelectorConfig(
                     options=choices,
                     multiple=True,
@@ -1408,8 +1448,63 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
                 )
             )
         return self.async_show_form(
-            step_id="profile_tools",
+            step_id="choose_tools",
             data_schema=vol.Schema(schema),
+            errors=errors,
+        )
+
+    async def async_step_tool_settings(self, user_input=None):
+        """Edit a tool stored on the system entry. Settings are shared."""
+        from .tool_flow import (
+            _preview_names,
+            _split_input,
+            _taken_names,
+            tool_config_schema,
+        )
+        from .tools.registry import cached_tool_types, get_registry
+
+        system = self._system_entry()
+        subentry_id = getattr(self, "_editing_subentry_id", None)
+        subentry = None
+        if system is not None and subentry_id:
+            subentry = system.subentries.get(subentry_id)
+        if subentry is None:
+            return await self.async_step_profile_tools()
+        tool = cached_tool_types().get(subentry.subentry_type)
+        if tool is None:
+            return await self.async_step_profile_tools()
+        stored = dict(subentry.data)
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            name, prefix, config = _split_input(user_input, tool)
+            for secret in tool.secrets:
+                if not str(config.get(secret) or "").strip():
+                    config[secret] = stored.get(secret, "")
+            names = _preview_names(self.hass, tool, prefix, config)
+            taken = _taken_names(self.hass, skip_unique_id=subentry.unique_id)
+            if any(item in taken for item in names):
+                errors["prefix"] = "duplicate_tool_name"
+            if not errors:
+                self.hass.config_entries.async_update_subentry(
+                    system,
+                    subentry,
+                    title=name,
+                    data={"prefix": prefix, **config},
+                )
+                registry = self.hass.data.get(DOMAIN, {}).get("tool_registry")
+                if registry is None:
+                    registry = get_registry(self.hass)
+                await registry.async_reload()
+                return await self.async_step_profile_tools()
+        suggested = {"name": subentry.title, **stored, "prefix": stored.get("prefix") or ""}
+        for secret in tool.secrets:
+            suggested[secret] = ""
+        return self.async_show_form(
+            step_id="tool_settings",
+            data_schema=self.add_suggested_values_to_schema(
+                tool_config_schema(tool, suggested),
+                suggested,
+            ),
             errors=errors,
         )
 

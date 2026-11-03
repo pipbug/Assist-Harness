@@ -231,61 +231,155 @@ def plan_migrations(entries) -> list[dict[str, Any]]:
     return plans
 
 
+SELECTION_MINOR_VERSION = 2
+
+
+def _system_subentries(hass: HomeAssistant):
+    for candidate in hass.config_entries.async_entries(DOMAIN):
+        if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            return list(candidate.subentries.values())
+    return []
+
+
+def migrate_disabled_tools(options: dict, subentries) -> tuple[dict, bool]:
+    """Turn a ``profile_tools`` allowlist into ``disabled_tools``.
+
+    Returns the new options and whether the conversion is finished. It is not
+    finished when an allowlist is present but the system entry has no tool
+    subentries yet, so the caller leaves the minor version alone and retries.
+    """
+    options = dict(options)
+    if "profile_tools" not in options:
+        return options, True
+    allow = options.get("profile_tools")
+    if allow is None:
+        options.pop("profile_tools", None)
+        options.pop("disabled_tools", None)
+        return options, True
+    if not subentries:
+        return options, False
+    allow_set = {str(item) for item in allow}
+    disabled: list[str] = []
+    for subentry in subentries:
+        identifiers = {subentry.subentry_id}
+        if subentry.unique_id:
+            identifiers.add(subentry.unique_id)
+        if not identifiers & allow_set:
+            disabled.append(subentry.subentry_id)
+    options.pop("profile_tools", None)
+    if disabled:
+        options["disabled_tools"] = disabled
+    else:
+        options.pop("disabled_tools", None)
+    return options, True
+
+
+def apply_disabled_tool_migration(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Bump to minor version 2 once ``profile_tools`` can be converted."""
+    if entry.version != 3 or entry.minor_version >= SELECTION_MINOR_VERSION:
+        return True
+    options, done = migrate_disabled_tools(dict(entry.options), _system_subentries(hass))
+    if not done:
+        return True
+    hass.config_entries.async_update_entry(
+        entry, options=options, minor_version=SELECTION_MINOR_VERSION
+    )
+    return True
+
+
+def prune_disabled_tool_ids(hass: HomeAssistant) -> None:
+    """Drop deleted subentry ids from every profile's disabled set.
+
+    The profile update is marked tools-only by entry id. A shared flag would
+    be consumed by the system entry's listener before the profile listener
+    runs, and the profile would reload.
+    """
+    live = {subentry.subentry_id for subentry in _system_subentries(hass)}
+    pending = hass.data.setdefault(DOMAIN, {}).setdefault("tools_only_entries", set())
+    for profile in hass.config_entries.async_entries(DOMAIN):
+        if profile.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            continue
+        raw = profile.options.get("disabled_tools")
+        if not raw:
+            continue
+        kept = [str(item) for item in raw if str(item) in live]
+        if kept == [str(item) for item in raw]:
+            continue
+        options = dict(profile.options)
+        if kept:
+            options["disabled_tools"] = kept
+        else:
+            options.pop("disabled_tools", None)
+        pending.add(profile.entry_id)
+        hass.config_entries.async_update_entry(profile, options=options)
+
+
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Upgrade one config entry to version 3 (tools as subentries)."""
     from .tool_flow import attach_subentries, subentries_for_tools
     from .tools.registry import async_ensure_tool_types
 
     await async_ensure_tool_types(hass)
-    if entry.version >= 3:
+    if entry.version > 3 or (
+        entry.version == 3 and entry.minor_version >= SELECTION_MINOR_VERSION
+    ):
         return True
 
-    data = dict(entry.data)
-    options = dict(entry.options)
-    if entry.version < 2:
-        entries = list(hass.config_entries.async_entries(DOMAIN))
-        if all(candidate.entry_id != entry.entry_id for candidate in entries):
-            entries.append(entry)
-        plans = {plan["unique_id"]: plan for plan in plan_migrations(entries)}
-        plan = plans.get(entry.unique_id)
-        if plan is None:
-            data, options = migrate_mapping(data, options, convert_search=False)
-        else:
-            data, options = plan["data"], plan["options"]
+    if entry.version < 3:
+        data = dict(entry.data)
+        options = dict(entry.options)
+        if entry.version < 2:
+            entries = list(hass.config_entries.async_entries(DOMAIN))
+            if all(candidate.entry_id != entry.entry_id for candidate in entries):
+                entries.append(entry)
+            plans = {plan["unique_id"]: plan for plan in plan_migrations(entries)}
+            plan = plans.get(entry.unique_id)
+            if plan is None:
+                data, options = migrate_mapping(data, options, convert_search=False)
+            else:
+                data, options = plan["data"], plan["options"]
 
-    tools = [item for item in (options.get(CONF_TOOLS) or data.get(CONF_TOOLS) or []) if isinstance(item, dict)]
-    options.pop(CONF_TOOLS, None)
-    data.pop(CONF_TOOLS, None)
-    is_system = entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID
-    if is_system and data.get("mcp_port") == OLD_DEFAULT_MCP_PORT:
-        # The previous integration's default. Keeping it would bind the same port.
-        data["mcp_port"] = DEFAULT_MCP_PORT
-    if is_system:
-        for other in hass.config_entries.async_entries(DOMAIN):
-            if other.entry_id == entry.entry_id or other.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
-                continue
-            tools.extend(
-                item
-                for item in (other.options.get(CONF_TOOLS) or other.data.get(CONF_TOOLS) or [])
-                if isinstance(item, dict)
-            )
-    hass.config_entries.async_update_entry(
-        entry, data=data, options=options, version=3, minor_version=1
-    )
-    if is_system:
-        attach_subentries(hass, entry, subentries_for_tools(tools))
-    else:
-        system = next(
-            (
-                candidate
-                for candidate in hass.config_entries.async_entries(DOMAIN)
-                if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID
-            ),
-            None,
+        tools = [item for item in (options.get(CONF_TOOLS) or data.get(CONF_TOOLS) or []) if isinstance(item, dict)]
+        options.pop(CONF_TOOLS, None)
+        data.pop(CONF_TOOLS, None)
+        is_system = entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID
+        if is_system and data.get("mcp_port") == OLD_DEFAULT_MCP_PORT:
+            # The previous integration's default. Keeping it would bind the same port.
+            data["mcp_port"] = DEFAULT_MCP_PORT
+        if is_system:
+            for other in hass.config_entries.async_entries(DOMAIN):
+                if other.entry_id == entry.entry_id or other.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                    continue
+                tools.extend(
+                    item
+                    for item in (other.options.get(CONF_TOOLS) or other.data.get(CONF_TOOLS) or [])
+                    if isinstance(item, dict)
+                )
+        hass.config_entries.async_update_entry(
+            entry, data=data, options=options, version=3, minor_version=1
         )
-        if system is not None and tools:
-            attach_subentries(hass, system, subentries_for_tools(tools))
-    _LOGGER.info("Migrated %s to tool subentries (version 3)", entry.title)
+        if is_system:
+            attach_subentries(hass, entry, subentries_for_tools(tools))
+        else:
+            system = next(
+                (
+                    candidate
+                    for candidate in hass.config_entries.async_entries(DOMAIN)
+                    if candidate.unique_id == SYSTEM_ENTRY_UNIQUE_ID
+                ),
+                None,
+            )
+            if system is not None and tools:
+                attach_subentries(hass, system, subentries_for_tools(tools))
+            _LOGGER.info("Migrated %s to tool subentries (version 3)", entry.title)
+
+    apply_disabled_tool_migration(hass, entry)
+    if entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+        for profile in hass.config_entries.async_entries(DOMAIN):
+            if profile.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+                continue
+            if profile.version == 3 and profile.minor_version < SELECTION_MINOR_VERSION:
+                apply_disabled_tool_migration(hass, profile)
     return True
 
 
@@ -370,7 +464,7 @@ class _ImportView:
 def _make_entry(plan: dict[str, Any]) -> ConfigEntry:
     return ConfigEntry(
         version=3,
-        minor_version=1,
+        minor_version=SELECTION_MINOR_VERSION,
         domain=DOMAIN,
         title=plan["title"],
         data=plan["data"],

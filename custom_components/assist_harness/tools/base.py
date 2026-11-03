@@ -54,6 +54,7 @@ class ToolInstance:
     config: dict[str, Any]
     entry_id: str
     shared: bool
+    subentry_id: str | None = None
     runtime: Any = None
     cached_definitions: list[dict[str, Any]] = field(default_factory=list)
 
