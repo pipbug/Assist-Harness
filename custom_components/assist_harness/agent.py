@@ -105,7 +105,7 @@ from .const import (
     MIN_REASONING_COMPLETION_TOKENS,
 )
 from .conversation_history import ConversationHistory
-from .trailing_offer import strip_trailing_offer
+from .trailing_offer import is_action_tool, strip_trailing_offer
 from .localization import get_spoken_symbols
 from .tools import mem0_memory  # [kestrel]
 
@@ -135,19 +135,6 @@ def _is_read_only_tool(name: str | None) -> bool:
     if name in READ_ONLY_TOOLS:
         return True
     return any(name.endswith("_" + known) for known in READ_ONLY_TOOLS)
-
-
-# HA tools that change device state; prefixed copies such as home_perform_action count too
-ACTION_TOOLS = frozenset({"perform_action", "call_service"})
-
-
-def _is_action_tool(name: str | None) -> bool:
-    """True for perform_action / call_service and prefixed copies."""
-    if not name:
-        return False
-    if name in ACTION_TOOLS:
-        return True
-    return any(name.endswith("_" + known) for known in ACTION_TOOLS)
 
 
 # How long the LLM-formatted MCP tool list is reused before refetching
@@ -1923,7 +1910,7 @@ class MCPAssistConversationEntity(ConversationEntity):
             # Execute the tool
             result = await self._call_mcp_tool(tool_name, arguments)
 
-            if "error" not in result and _is_action_tool(tool_name):
+            if "error" not in result and is_action_tool(tool_name):
                 self._action_succeeded_this_turn = True
 
             # Format result for OpenAI

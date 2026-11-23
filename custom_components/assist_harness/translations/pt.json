@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' dá a cada conversa do Home Assistant a sua própria sessão do OpenClaw, e as perguntas de acompanhamento ficam nela. 'Fixed' envia todas as solicitações para a única sessão definida em Chave de sessão.",
           "system_prompt": "Enviado ao OpenClaw com cada solicitação como uma instrução de sistema adicional, por exemplo para definir uma persona. Deixe em branco para usar as instruções próprias do agente. O cômodo do satélite de voz é adicionado automaticamente.",
           "thinking_mode": "Controla o raciocínio dos modelos que pensam antes de responder. Desligado é o mais rápido para voz. Predefinição do servidor não envia nada. Nem todos os servidores o respeitam (pouco fiável no LM Studio).",
-          "strip_trailing_offer": "Após uma ação bem-sucedida no dispositivo, remover uma pergunta final como «Quer que eu ajuste mais alguma coisa?»."
+          "strip_trailing_offer": "Após uma ação bem-sucedida, remover uma pergunta final como «Quer que eu ajuste mais alguma coisa?»."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' dá a cada conversa do Home Assistant a sua própria sessão do OpenClaw, e as perguntas de acompanhamento ficam nela. 'Fixed' envia todas as solicitações para a única sessão definida em Chave de sessão.",
           "api_key": "Obrigatória para fornecedores na nuvem. Opcional para servidores locais (LM Studio, llama.cpp, Ollama, vLLM): deixe em branco, a menos que o servidor exija uma chave.",
           "thinking_mode": "Controla o raciocínio dos modelos que pensam antes de responder. Desligado é o mais rápido para voz. Predefinição do servidor não envia nada. Nem todos os servidores o respeitam (pouco fiável no LM Studio).",
-          "strip_trailing_offer": "Após uma ação bem-sucedida no dispositivo, remover uma pergunta final como «Quer que eu ajuste mais alguma coisa?»."
+          "strip_trailing_offer": "Após uma ação bem-sucedida, remover uma pergunta final como «Quer que eu ajuste mais alguma coisa?»."
         }
       },
       "profile_tools": {

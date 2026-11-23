@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' donne à chaque conversation Home Assistant sa propre session OpenClaw, où restent les questions de suivi. 'Fixed' envoie toutes les requêtes à l'unique session définie dans Clé de session.",
           "system_prompt": "Envoyé à OpenClaw avec chaque requête comme instruction système supplémentaire, par exemple pour définir un personnage. Laissez vide pour utiliser les instructions propres à l'agent. La pièce du satellite vocal est ajoutée automatiquement.",
           "thinking_mode": "Contrôle le raisonnement des modèles qui réfléchissent avant de répondre. Désactivé est le plus rapide pour la voix. Défaut du serveur n'envoie rien. Tous les serveurs ne le respectent pas (peu fiable avec LM Studio).",
-          "strip_trailing_offer": "Après une action réussie sur un appareil, supprimer une question finale du type « Puis-je faire autre chose ? »."
+          "strip_trailing_offer": "Après une action réussie, supprimer une question finale du type « Puis-je faire autre chose ? »."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' donne à chaque conversation Home Assistant sa propre session OpenClaw, où restent les questions de suivi. 'Fixed' envoie toutes les requêtes à l'unique session définie dans Clé de session.",
           "api_key": "Obligatoire pour les fournisseurs cloud. Facultative pour les serveurs locaux (LM Studio, llama.cpp, Ollama, vLLM) : laissez vide sauf si le serveur exige une clé.",
           "thinking_mode": "Contrôle le raisonnement des modèles qui réfléchissent avant de répondre. Désactivé est le plus rapide pour la voix. Défaut du serveur n'envoie rien. Tous les serveurs ne le respectent pas (peu fiable avec LM Studio).",
-          "strip_trailing_offer": "Après une action réussie sur un appareil, supprimer une question finale du type « Puis-je faire autre chose ? »."
+          "strip_trailing_offer": "Après une action réussie, supprimer une question finale du type « Puis-je faire autre chose ? »."
         }
       },
       "profile_tools": {

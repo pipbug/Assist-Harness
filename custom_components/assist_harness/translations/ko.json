@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation'은 Home Assistant 대화마다 별도의 OpenClaw 세션을 주며, 후속 질문은 그 세션에 남습니다. 'Fixed'는 모든 요청을 세션 키에 지정한 하나의 세션으로 보냅니다.",
           "system_prompt": "모든 요청에 추가 시스템 프롬프트로 OpenClaw에 전송되며, 예를 들어 페르소나를 정할 때 쓸 수 있습니다. 에이전트 자체 프롬프트를 사용하려면 비워 두세요. 음성 새틀라이트의 방은 자동으로 추가됩니다.",
           "thinking_mode": "답변 전에 생각하는 모델의 추론을 제어합니다. 끄기가 음성에 가장 빠릅니다. 서버 기본값은 아무것도 보내지 않습니다. 모든 서버가 따르지는 않습니다(LM Studio에서는 불안정).",
-          "strip_trailing_offer": "장치 동작이 성공한 뒤 '다른 것도 조정해 드릴까요?'와 같은 마지막 질문을 제거합니다."
+          "strip_trailing_offer": "동작이 성공한 뒤 '다른 것도 조정해 드릴까요?'와 같은 마지막 질문을 제거합니다."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation'은 Home Assistant 대화마다 별도의 OpenClaw 세션을 주며, 후속 질문은 그 세션에 남습니다. 'Fixed'는 모든 요청을 세션 키에 지정한 하나의 세션으로 보냅니다.",
           "api_key": "클라우드 제공업체에는 필수입니다. 로컬 서버(LM Studio, llama.cpp, Ollama, vLLM)에서는 선택 사항이며, 서버가 키를 요구하지 않으면 비워 두세요.",
           "thinking_mode": "답변 전에 생각하는 모델의 추론을 제어합니다. 끄기가 음성에 가장 빠릅니다. 서버 기본값은 아무것도 보내지 않습니다. 모든 서버가 따르지는 않습니다(LM Studio에서는 불안정).",
-          "strip_trailing_offer": "장치 동작이 성공한 뒤 '다른 것도 조정해 드릴까요?'와 같은 마지막 질문을 제거합니다."
+          "strip_trailing_offer": "동작이 성공한 뒤 '다른 것도 조정해 드릴까요?'와 같은 마지막 질문을 제거합니다."
         }
       },
       "profile_tools": {

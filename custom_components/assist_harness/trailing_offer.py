@@ -4,11 +4,32 @@ from __future__ import annotations
 
 import re
 
+# State-changing tools. Prefixed copies such as home_save_memory count too.
+# set_conversation_state is excluded: it only flags whether a reply is expected.
+ACTION_TOOLS = frozenset(
+    {
+        "perform_action",
+        "call_service",
+        "save_memory",
+        "run_script",
+        "run_automation",
+    }
+)
+
 # A sentence ends at !, ?, or a period that is not part of a decimal (7.3).
 # The terminator must be followed by whitespace or the end of the string.
 _SENTENCE_END = re.compile(
     r"(?:[!?]+|(?<!\d)\.(?!\d))+(?=\s|$)",
 )
+
+
+def is_action_tool(name: str | None) -> bool:
+    """True for state-changing tools and prefixed copies."""
+    if not name:
+        return False
+    if name in ACTION_TOOLS:
+        return True
+    return any(name.endswith("_" + known) for known in ACTION_TOOLS)
 
 
 def split_sentences(text: str) -> list[tuple[int, int]]:

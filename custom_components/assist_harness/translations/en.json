@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' gives each Home Assistant conversation its own OpenClaw session, so follow-up questions stay in it. 'Fixed' sends every request to the single session set in Session Key.",
           "system_prompt": "Sent to OpenClaw with every request as an extra system prompt, for example to set a persona. Leave blank to use the agent's own prompts. The satellite's room is added automatically.",
           "thinking_mode": "Controls reasoning on models that think before answering. Off is fastest for voice. Server default sends nothing. Not every server honours it (LM Studio is unreliable).",
-          "strip_trailing_offer": "After a successful device action, drop a final question such as 'Would you like anything else?'"
+          "strip_trailing_offer": "After a successful action, drop a final question such as 'Would you like anything else?'"
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' gives each Home Assistant conversation its own OpenClaw session, so follow-up questions stay in it. 'Fixed' sends every request to the single session set in Session Key.",
           "api_key": "Required for cloud providers. Optional for local servers (LM Studio, llama.cpp, Ollama, vLLM): leave blank unless the server needs a key.",
           "thinking_mode": "Controls reasoning on models that think before answering. Off is fastest for voice. Server default sends nothing. Not every server honours it (LM Studio is unreliable).",
-          "strip_trailing_offer": "After a successful device action, drop a final question such as 'Would you like anything else?'"
+          "strip_trailing_offer": "After a successful action, drop a final question such as 'Would you like anything else?'"
         }
       },
       "profile_tools": {

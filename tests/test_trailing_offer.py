@@ -19,6 +19,7 @@ _MOD = importlib.util.module_from_spec(_SPEC)
 assert _SPEC.loader is not None
 _SPEC.loader.exec_module(_MOD)
 strip_trailing_offer = _MOD.strip_trailing_offer
+is_action_tool = _MOD.is_action_tool
 
 
 def test_drops_question_after_action():
@@ -77,3 +78,43 @@ def test_decimal_is_not_a_sentence_boundary():
     assert (
         strip_trailing_offer(text, action_succeeded=True) == "Set to 7.3 degrees."
     )
+
+
+def test_save_memory_triggers_strip():
+    text = "I've saved that, miss. Would you like me to adjust anything else?"
+    assert is_action_tool("save_memory")
+    assert is_action_tool("home_save_memory")
+    assert (
+        strip_trailing_offer(text, action_succeeded=is_action_tool("save_memory"))
+        == "I've saved that, miss."
+    )
+
+
+def test_recall_memory_does_not_trigger_strip():
+    text = "You prefer dim lights. Would you like me to adjust anything else?"
+    assert not is_action_tool("recall_memory")
+    assert not is_action_tool("home_recall_memory")
+    assert (
+        strip_trailing_offer(
+            text, action_succeeded=is_action_tool("recall_memory")
+        )
+        == text
+    )
+
+
+def test_action_tool_classification():
+    assert is_action_tool("perform_action")
+    assert is_action_tool("call_service")
+    assert is_action_tool("run_script")
+    assert is_action_tool("run_automation")
+    assert is_action_tool("home_perform_action")
+    assert not is_action_tool("set_conversation_state")
+    assert not is_action_tool("discover_entities")
+    assert not is_action_tool("get_entity_details")
+    assert not is_action_tool("get_entity_history")
+    assert not is_action_tool("list_areas")
+    assert not is_action_tool("list_domains")
+    assert not is_action_tool("search")
+    assert not is_action_tool("read_url")
+    assert not is_action_tool("")
+    assert not is_action_tool(None)

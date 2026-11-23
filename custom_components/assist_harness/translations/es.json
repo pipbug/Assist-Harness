@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' da a cada conversación de Home Assistant su propia sesión de OpenClaw, y las preguntas de seguimiento se quedan en ella. 'Fixed' envía todas las solicitudes a la única sesión indicada en Clave de sesión.",
           "system_prompt": "Se envía a OpenClaw con cada solicitud como una instrucción de sistema adicional, por ejemplo para definir una personalidad. Déjalo vacío para usar las instrucciones propias del agente. La habitación del satélite de voz se añade automáticamente.",
           "thinking_mode": "Controla el razonamiento de los modelos que piensan antes de responder. Desactivado es lo más rápido para voz. Predeterminado del servidor no envía nada. No todos los servidores lo respetan (poco fiable en LM Studio).",
-          "strip_trailing_offer": "Tras una acción correcta sobre un dispositivo, quitar una pregunta final como «¿Quiere que ajuste algo más?»."
+          "strip_trailing_offer": "Tras una acción correcta, quitar una pregunta final como «¿Quiere que ajuste algo más?»."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' da a cada conversación de Home Assistant su propia sesión de OpenClaw, y las preguntas de seguimiento se quedan en ella. 'Fixed' envía todas las solicitudes a la única sesión indicada en Clave de sesión.",
           "api_key": "Obligatoria para proveedores en la nube. Opcional para servidores locales (LM Studio, llama.cpp, Ollama, vLLM): déjala vacía salvo que el servidor requiera una clave.",
           "thinking_mode": "Controla el razonamiento de los modelos que piensan antes de responder. Desactivado es lo más rápido para voz. Predeterminado del servidor no envía nada. No todos los servidores lo respetan (poco fiable en LM Studio).",
-          "strip_trailing_offer": "Tras una acción correcta sobre un dispositivo, quitar una pregunta final como «¿Quiere que ajuste algo más?»."
+          "strip_trailing_offer": "Tras una acción correcta, quitar una pregunta final como «¿Quiere que ajuste algo más?»."
         }
       },
       "profile_tools": {
