@@ -43,6 +43,7 @@ CONF_OLLAMA_NUM_CTX = "ollama_num_ctx"
 CONF_FOLLOW_UP_PHRASES = "follow_up_phrases"
 CONF_END_WORDS = "end_words"
 CONF_CLEAN_RESPONSES = "clean_responses"
+CONF_STRIP_TRAILING_OFFER = "strip_trailing_offer"
 CONF_TIMEOUT = "timeout"
 CONF_THINKING_MODE = "thinking_mode"
 CONF_SEARXNG_URL = "searxng_url"
@@ -111,6 +112,7 @@ DEFAULT_OLLAMA_NUM_CTX = 0  # 0 = use model default
 DEFAULT_FOLLOW_UP_PHRASES = "anything else, what else, would you, do you, should i, can i, which, how can, what about, is there"
 DEFAULT_END_WORDS = "stop, cancel, no, nope, thanks, thank you, bye, goodbye, done, never mind, nevermind, forget it, that's all, that's it"
 DEFAULT_CLEAN_RESPONSES = False
+DEFAULT_STRIP_TRAILING_OFFER = True
 DEFAULT_TIMEOUT = 30
 # Thinking/reasoning control: "default" sends nothing (server decides)
 THINKING_MODES = ["default", "off", "low", "medium", "high"]

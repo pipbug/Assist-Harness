@@ -59,6 +59,7 @@ from .const import (
     CONF_FOLLOW_UP_PHRASES,
     CONF_END_WORDS,
     CONF_CLEAN_RESPONSES,
+    CONF_STRIP_TRAILING_OFFER,
     CONF_TIMEOUT,
     SERVER_TYPE_LMSTUDIO,
     SERVER_TYPE_LLAMACPP,
@@ -114,6 +115,7 @@ from .const import (
     DEFAULT_FOLLOW_UP_PHRASES,
     DEFAULT_END_WORDS,
     DEFAULT_CLEAN_RESPONSES,
+    DEFAULT_STRIP_TRAILING_OFFER,
     DEFAULT_TIMEOUT,
     DEFAULT_API_KEY,
     OPENAI_BASE_URL,
@@ -1202,6 +1204,9 @@ class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_CLEAN_RESPONSES, default=DEFAULT_CLEAN_RESPONSES
                 ): bool,
+                vol.Optional(
+                    CONF_STRIP_TRAILING_OFFER, default=DEFAULT_STRIP_TRAILING_OFFER
+                ): bool,
                 vol.Required(CONF_TIMEOUT, default=60): vol.All(
                     vol.Coerce(int), vol.Range(min=5, max=300)
                 ),
@@ -1260,6 +1265,9 @@ class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ): TextSelector(TextSelectorConfig(multiline=True)),
                     vol.Optional(
                         CONF_CLEAN_RESPONSES, default=DEFAULT_CLEAN_RESPONSES
+                    ): bool,
+                    vol.Optional(
+                        CONF_STRIP_TRAILING_OFFER, default=DEFAULT_STRIP_TRAILING_OFFER
                     ): bool,
                     vol.Required(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.All(
                         vol.Coerce(int), vol.Range(min=5, max=300)
@@ -2060,6 +2068,16 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
                             data.get(CONF_CLEAN_RESPONSES, DEFAULT_CLEAN_RESPONSES),
                         ),
                     ): bool,
+                    vol.Optional(
+                        CONF_STRIP_TRAILING_OFFER,
+                        default=options.get(
+                            CONF_STRIP_TRAILING_OFFER,
+                            data.get(
+                                CONF_STRIP_TRAILING_OFFER,
+                                DEFAULT_STRIP_TRAILING_OFFER,
+                            ),
+                        ),
+                    ): bool,
                     vol.Required(
                         CONF_TIMEOUT,
                         default=options.get(CONF_TIMEOUT, data.get(CONF_TIMEOUT, 60)),
@@ -2178,6 +2196,16 @@ class AssistHarnessOptionsFlow(config_entries.OptionsFlow):
                         default=options.get(
                             CONF_CLEAN_RESPONSES,
                             data.get(CONF_CLEAN_RESPONSES, DEFAULT_CLEAN_RESPONSES),
+                        ),
+                    ): bool,
+                    vol.Required(
+                        CONF_STRIP_TRAILING_OFFER,
+                        default=options.get(
+                            CONF_STRIP_TRAILING_OFFER,
+                            data.get(
+                                CONF_STRIP_TRAILING_OFFER,
+                                DEFAULT_STRIP_TRAILING_OFFER,
+                            ),
                         ),
                     ): bool,
                     # 15/17. Response Time Out

@@ -51,6 +51,7 @@ from .const import (
     CONF_FOLLOW_UP_PHRASES,
     CONF_END_WORDS,
     CONF_CLEAN_RESPONSES,
+    CONF_STRIP_TRAILING_OFFER,
     CONF_TIMEOUT,
     CONF_THINKING_MODE,
     DEFAULT_THINKING_MODE,
@@ -72,6 +73,7 @@ from .const import (
     DEFAULT_FOLLOW_UP_PHRASES,
     DEFAULT_END_WORDS,
     DEFAULT_CLEAN_RESPONSES,
+    DEFAULT_STRIP_TRAILING_OFFER,
     DEFAULT_TIMEOUT,
     RESPONSE_MODE_INSTRUCTIONS,
     SERVER_TYPE_LMSTUDIO,
@@ -103,6 +105,7 @@ from .const import (
     MIN_REASONING_COMPLETION_TOKENS,
 )
 from .conversation_history import ConversationHistory
+from .trailing_offer import strip_trailing_offer
 from .localization import get_spoken_symbols
 from .tools import mem0_memory  # [kestrel]
 
@@ -132,6 +135,19 @@ def _is_read_only_tool(name: str | None) -> bool:
     if name in READ_ONLY_TOOLS:
         return True
     return any(name.endswith("_" + known) for known in READ_ONLY_TOOLS)
+
+
+# HA tools that change device state; prefixed copies such as home_perform_action count too
+ACTION_TOOLS = frozenset({"perform_action", "call_service"})
+
+
+def _is_action_tool(name: str | None) -> bool:
+    """True for perform_action / call_service and prefixed copies."""
+    if not name:
+        return False
+    if name in ACTION_TOOLS:
+        return True
+    return any(name.endswith("_" + known) for known in ACTION_TOOLS)
 
 
 # How long the LLM-formatted MCP tool list is reused before refetching
@@ -178,6 +194,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         self.entry = entry
         self.history = ConversationHistory()
         self._current_chat_log = None  # ChatLog for debug view tracking
+        self._action_succeeded_this_turn = False
 
         # Entity attributes
         profile_name = entry.data.get("profile_name", "Assist Harness")
@@ -336,6 +353,16 @@ class MCPAssistConversationEntity(ConversationEntity):
         return self.entry.options.get(
             CONF_CLEAN_RESPONSES,
             self.entry.data.get(CONF_CLEAN_RESPONSES, DEFAULT_CLEAN_RESPONSES),
+        )
+
+    @property
+    def strip_trailing_offer_enabled(self) -> bool:
+        """Get trailing-offer stripping setting (dynamic, default on)."""
+        return self.entry.options.get(
+            CONF_STRIP_TRAILING_OFFER,
+            self.entry.data.get(
+                CONF_STRIP_TRAILING_OFFER, DEFAULT_STRIP_TRAILING_OFFER
+            ),
         )
 
     @property
@@ -815,6 +842,7 @@ class MCPAssistConversationEntity(ConversationEntity):
     ) -> ConversationResult:
         """Process user input with ChatLog tracking."""
         mem0_memory.begin_turn()  # [kestrel]
+        self._action_succeeded_this_turn = False
         try:
             _LOGGER.debug("Conversation ID: %s", conversation_id)
 
@@ -1154,6 +1182,18 @@ class MCPAssistConversationEntity(ConversationEntity):
             _LOGGER.info(
                 f"🧠 Thinking content (stripped): {thinking_content[:500]}..."
             )
+
+        if self.strip_trailing_offer_enabled:
+            stripped = strip_trailing_offer(
+                response_text, self._action_succeeded_this_turn
+            )
+            if stripped != response_text:
+                _LOGGER.debug(
+                    "Stripped trailing offer after a successful action: %r -> %r",
+                    response_text,
+                    stripped,
+                )
+                response_text = stripped
 
         if self.debug_mode:
             _LOGGER.info(f"💬 Full response (repr): {repr(response_text)}")
@@ -1808,6 +1848,18 @@ class MCPAssistConversationEntity(ConversationEntity):
 
         return text
 
+    async def _trigger_sentence_tts(self, text: str, response_so_far: str) -> None:
+        """Speak a streamed sentence, skipping a trailing offer after an action."""
+        if (
+            self.strip_trailing_offer_enabled
+            and self._action_succeeded_this_turn
+            and text.strip().endswith("?")
+            and strip_trailing_offer(response_so_far, True) != response_so_far
+        ):
+            _LOGGER.debug("Skipping streamed TTS of trailing offer: %r", text)
+            return
+        await self._trigger_tts(text)
+
     async def _trigger_tts(self, text: str):
         """Send text to TTS for immediate feedback."""
         if not text or len(text) < 3:  # Skip very short fragments
@@ -1870,6 +1922,9 @@ class MCPAssistConversationEntity(ConversationEntity):
 
             # Execute the tool
             result = await self._call_mcp_tool(tool_name, arguments)
+
+            if "error" not in result and _is_action_tool(tool_name):
+                self._action_succeeded_this_turn = True
 
             # Format result for OpenAI
             if "error" in result:
@@ -2350,7 +2405,9 @@ class MCPAssistConversationEntity(ConversationEntity):
                                         sentence_buffer.endswith(p)
                                         for p in [". ", "! ", "? ", ".\n", "!\n", "?\n"]
                                     ):
-                                        await self._trigger_tts(sentence_buffer.strip())
+                                        await self._trigger_sentence_tts(
+                                            sentence_buffer.strip(), response_text
+                                        )
                                         sentence_buffer = ""
 
                                 # Handle streamed tool calls
@@ -2512,7 +2569,9 @@ class MCPAssistConversationEntity(ConversationEntity):
 
             # Handle any remaining sentence
             if sentence_buffer.strip():
-                await self._trigger_tts(sentence_buffer.strip())
+                await self._trigger_sentence_tts(
+                    sentence_buffer.strip(), response_text
+                )
                 sentence_buffer = ""
 
             current_tool_calls = self._compact_streamed_tool_calls(current_tool_calls)

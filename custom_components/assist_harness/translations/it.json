@@ -52,6 +52,7 @@
           "follow_up_phrases": "Frasi di seguito",
           "end_words": "Parole per terminare conversazione",
           "clean_responses": "Pulisci risposte per output vocale",
+          "strip_trailing_offer": "Rimuovi offerte finali dopo un'azione",
           "timeout": "Timeout risposta",
           "thinking_mode": "Ragionamento",
           "debug_mode": "Modalita debug",
@@ -69,7 +70,8 @@
           "openclaw_agent_id": "L'agente OpenClaw che risponde alle richieste di questo profilo. Deve corrispondere a un agente configurato in OpenClaw. Il valore predefinito è 'main'.",
           "openclaw_session_mode": "'Per conversation' assegna a ogni conversazione di Home Assistant una propria sessione OpenClaw, in cui restano le domande successive. 'Fixed' invia tutte le richieste all'unica sessione indicata in Chiave di sessione.",
           "system_prompt": "Inviato a OpenClaw con ogni richiesta come istruzione di sistema aggiuntiva, ad esempio per definire un personaggio. Lascia vuoto per usare le istruzioni proprie dell'agente. La stanza del satellite vocale viene aggiunta automaticamente.",
-          "thinking_mode": "Controlla il ragionamento dei modelli che pensano prima di rispondere. Disattivato è il più veloce per la voce. Predefinito del server non invia nulla. Non tutti i server lo rispettano (poco affidabile con LM Studio)."
+          "thinking_mode": "Controlla il ragionamento dei modelli che pensano prima di rispondere. Disattivato è il più veloce per la voce. Predefinito del server non invia nulla. Non tutti i server lo rispettano (poco affidabile con LM Studio).",
+          "strip_trailing_offer": "Dopo un'azione riuscita su un dispositivo, rimuovere una domanda finale come «Posso fare altro?»."
         }
       },
       "mcp_server": {
@@ -160,6 +162,7 @@
           "follow_up_phrases": "Frasi di seguito",
           "end_words": "Parole per terminare conversazione",
           "clean_responses": "Pulisci risposte per output vocale",
+          "strip_trailing_offer": "Rimuovi offerte finali dopo un'azione",
           "timeout": "Timeout risposta",
           "thinking_mode": "Ragionamento",
           "debug_mode": "Modalita debug",
@@ -185,7 +188,8 @@
           "openclaw_agent_id": "L'agente OpenClaw che risponde alle richieste di questo profilo. Deve corrispondere a un agente configurato in OpenClaw. Il valore predefinito è 'main'.",
           "openclaw_session_mode": "'Per conversation' assegna a ogni conversazione di Home Assistant una propria sessione OpenClaw, in cui restano le domande successive. 'Fixed' invia tutte le richieste all'unica sessione indicata in Chiave di sessione.",
           "api_key": "Obbligatoria per i provider cloud. Facoltativa per i server locali (LM Studio, llama.cpp, Ollama, vLLM): lasciala vuota a meno che il server non richieda una chiave.",
-          "thinking_mode": "Controlla il ragionamento dei modelli che pensano prima di rispondere. Disattivato è il più veloce per la voce. Predefinito del server non invia nulla. Non tutti i server lo rispettano (poco affidabile con LM Studio)."
+          "thinking_mode": "Controlla il ragionamento dei modelli che pensano prima di rispondere. Disattivato è il più veloce per la voce. Predefinito del server non invia nulla. Non tutti i server lo rispettano (poco affidabile con LM Studio).",
+          "strip_trailing_offer": "Dopo un'azione riuscita su un dispositivo, rimuovere una domanda finale come «Posso fare altro?»."
         }
       },
       "profile_tools": {

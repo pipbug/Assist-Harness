@@ -52,6 +52,7 @@
           "follow_up_phrases": "Nachfrage-Phrasen",
           "end_words": "Gespraech-beenden-Woerter",
           "clean_responses": "Antworten für Sprachausgabe bereinigen",
+          "strip_trailing_offer": "Nachfrage nach Aktionen entfernen",
           "timeout": "Antwort-Timeout",
           "thinking_mode": "Denken",
           "debug_mode": "Debug-Modus",
@@ -69,7 +70,8 @@
           "openclaw_agent_id": "Der OpenClaw-Agent, der die Anfragen dieses Profils beantwortet. Er muss einem in OpenClaw eingerichteten Agenten entsprechen. Standard ist 'main'.",
           "openclaw_session_mode": "'Per conversation' gibt jeder Unterhaltung in Home Assistant eine eigene OpenClaw-Sitzung, in der Folgefragen bleiben. 'Fixed' sendet alle Anfragen an die eine Sitzung aus dem Sitzungsschlüssel.",
           "system_prompt": "Wird mit jeder Anfrage als zusätzlicher System-Prompt an OpenClaw gesendet, zum Beispiel um eine Persona festzulegen. Leer lassen, um die eigenen Prompts des Agenten zu verwenden. Der Raum des Sprachsatelliten wird automatisch hinzugefügt.",
-          "thinking_mode": "Steuert das Nachdenken bei Modellen, die vor der Antwort überlegen. Aus ist für Sprache am schnellsten. Server-Standard sendet nichts. Nicht jeder Server beachtet die Einstellung (bei LM Studio unzuverlässig)."
+          "thinking_mode": "Steuert das Nachdenken bei Modellen, die vor der Antwort überlegen. Aus ist für Sprache am schnellsten. Server-Standard sendet nichts. Nicht jeder Server beachtet die Einstellung (bei LM Studio unzuverlässig).",
+          "strip_trailing_offer": "Nach einer erfolgreichen Geräteaktion eine abschließende Frage wie „Kann ich sonst noch etwas tun?“ entfernen."
         }
       },
       "mcp_server": {
@@ -160,6 +162,7 @@
           "follow_up_phrases": "Nachfrage-Phrasen",
           "end_words": "Gespraech-beenden-Woerter",
           "clean_responses": "Antworten für Sprachausgabe bereinigen",
+          "strip_trailing_offer": "Nachfrage nach Aktionen entfernen",
           "timeout": "Antwort-Timeout",
           "thinking_mode": "Denken",
           "debug_mode": "Debug-Modus",
@@ -185,7 +188,8 @@
           "openclaw_agent_id": "Der OpenClaw-Agent, der die Anfragen dieses Profils beantwortet. Er muss einem in OpenClaw eingerichteten Agenten entsprechen. Standard ist 'main'.",
           "openclaw_session_mode": "'Per conversation' gibt jeder Unterhaltung in Home Assistant eine eigene OpenClaw-Sitzung, in der Folgefragen bleiben. 'Fixed' sendet alle Anfragen an die eine Sitzung aus dem Sitzungsschlüssel.",
           "api_key": "Für Cloud-Anbieter erforderlich. Für lokale Server (LM Studio, llama.cpp, Ollama, vLLM) optional: leer lassen, sofern der Server keinen Schlüssel verlangt.",
-          "thinking_mode": "Steuert das Nachdenken bei Modellen, die vor der Antwort überlegen. Aus ist für Sprache am schnellsten. Server-Standard sendet nichts. Nicht jeder Server beachtet die Einstellung (bei LM Studio unzuverlässig)."
+          "thinking_mode": "Steuert das Nachdenken bei Modellen, die vor der Antwort überlegen. Aus ist für Sprache am schnellsten. Server-Standard sendet nichts. Nicht jeder Server beachtet die Einstellung (bei LM Studio unzuverlässig).",
+          "strip_trailing_offer": "Nach einer erfolgreichen Geräteaktion eine abschließende Frage wie „Kann ich sonst noch etwas tun?“ entfernen."
         }
       },
       "profile_tools": {

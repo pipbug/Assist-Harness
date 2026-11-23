@@ -52,6 +52,7 @@
           "follow_up_phrases": "Oppfolgingsfraser",
           "end_words": "Avslutt samtale-ord",
           "clean_responses": "Rens svar for stemmeoutput",
+          "strip_trailing_offer": "Fjern oppfølgende tilbud etter handlinger",
           "timeout": "Svartidsavbrudd",
           "thinking_mode": "Tenking",
           "debug_mode": "Feilsokingsmodus",
@@ -69,7 +70,8 @@
           "openclaw_agent_id": "OpenClaw-agenten som svarer på forespørslene fra denne profilen. Den må samsvare med en agent som er satt opp i OpenClaw. Standard er 'main'.",
           "openclaw_session_mode": "'Per conversation' gir hver samtale i Home Assistant sin egen OpenClaw-økt, og oppfølgingsspørsmål blir i den. 'Fixed' sender alle forespørsler til den ene økten som er angitt i Øktnøkkel.",
           "system_prompt": "Sendes til OpenClaw sammen med hver forespørsel som en ekstra systeminstruksjon, for eksempel for å angi en persona. La feltet stå tomt for å bruke agentens egne instruksjoner. Rommet til stemmesatellitten legges til automatisk.",
-          "thinking_mode": "Styrer resonneringen hos modeller som tenker før de svarer. Av er raskest for tale. Serverstandard sender ingenting. Ikke alle servere følger innstillingen (upålitelig i LM Studio)."
+          "thinking_mode": "Styrer resonneringen hos modeller som tenker før de svarer. Av er raskest for tale. Serverstandard sender ingenting. Ikke alle servere følger innstillingen (upålitelig i LM Studio).",
+          "strip_trailing_offer": "Etter en vellykket enhetshandling, fjern et avsluttende spørsmål som «Skal jeg justere noe mer?»."
         }
       },
       "mcp_server": {
@@ -160,6 +162,7 @@
           "follow_up_phrases": "Oppfolgingsfraser",
           "end_words": "Avslutt samtale-ord",
           "clean_responses": "Rens svar for stemmeoutput",
+          "strip_trailing_offer": "Fjern oppfølgende tilbud etter handlinger",
           "timeout": "Svartidsavbrudd",
           "thinking_mode": "Tenking",
           "debug_mode": "Feilsokingsmodus",
@@ -185,7 +188,8 @@
           "openclaw_agent_id": "OpenClaw-agenten som svarer på forespørslene fra denne profilen. Den må samsvare med en agent som er satt opp i OpenClaw. Standard er 'main'.",
           "openclaw_session_mode": "'Per conversation' gir hver samtale i Home Assistant sin egen OpenClaw-økt, og oppfølgingsspørsmål blir i den. 'Fixed' sender alle forespørsler til den ene økten som er angitt i Øktnøkkel.",
           "api_key": "Påkrevd for skyleverandører. Valgfri for lokale servere (LM Studio, llama.cpp, Ollama, vLLM): la feltet stå tomt med mindre serveren krever en nøkkel.",
-          "thinking_mode": "Styrer resonneringen hos modeller som tenker før de svarer. Av er raskest for tale. Serverstandard sender ingenting. Ikke alle servere følger innstillingen (upålitelig i LM Studio)."
+          "thinking_mode": "Styrer resonneringen hos modeller som tenker før de svarer. Av er raskest for tale. Serverstandard sender ingenting. Ikke alle servere følger innstillingen (upålitelig i LM Studio).",
+          "strip_trailing_offer": "Etter en vellykket enhetshandling, fjern et avsluttende spørsmål som «Skal jeg justere noe mer?»."
         }
       },
       "profile_tools": {

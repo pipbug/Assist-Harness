@@ -52,6 +52,7 @@
           "follow_up_phrases": "Mga Follow-up na Parirala",
           "end_words": "Mga Salita para Tapusin ang Usapan",
           "clean_responses": "Linisin ang mga Tugon para sa Voice Output",
+          "strip_trailing_offer": "Alisin ang kasunod na alok pagkatapos ng aksyon",
           "timeout": "Response Time Out",
           "thinking_mode": "Pag-iisip",
           "debug_mode": "Debug Mode",
@@ -69,7 +70,8 @@
           "openclaw_agent_id": "Ang OpenClaw agent na sumasagot sa mga kahilingan ng profile na ito. Dapat itong tumugma sa agent na naka-configure sa OpenClaw. Ang default ay 'main'.",
           "openclaw_session_mode": "Binibigyan ng 'Per conversation' ang bawat Home Assistant conversation ng sarili nitong OpenClaw session, at nananatili roon ang mga follow-up na tanong. Ipinapadala ng 'Fixed' ang lahat ng kahilingan sa iisang session na itinakda sa Session Key.",
           "system_prompt": "Ipinapadala sa OpenClaw kasama ng bawat kahilingan bilang karagdagang system prompt, halimbawa para magtakda ng persona. Iwanang blangko para gamitin ang sariling mga prompt ng agent. Awtomatikong idinaragdag ang kuwarto ng voice satellite.",
-          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio)."
+          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio).",
+          "strip_trailing_offer": "Pagkatapos ng matagumpay na aksyon sa device, alisin ang pangwakas na tanong gaya ng 'May iba pa ba akong ia-adjust?'."
         }
       },
       "mcp_server": {
@@ -160,6 +162,7 @@
           "follow_up_phrases": "Mga Follow-up na Parirala",
           "end_words": "Mga Salita para Tapusin ang Usapan",
           "clean_responses": "Linisin ang mga Tugon para sa Voice Output",
+          "strip_trailing_offer": "Alisin ang kasunod na alok pagkatapos ng aksyon",
           "timeout": "Response Time Out",
           "thinking_mode": "Pag-iisip",
           "debug_mode": "Debug Mode",
@@ -185,7 +188,8 @@
           "openclaw_agent_id": "Ang OpenClaw agent na sumasagot sa mga kahilingan ng profile na ito. Dapat itong tumugma sa agent na naka-configure sa OpenClaw. Ang default ay 'main'.",
           "openclaw_session_mode": "Binibigyan ng 'Per conversation' ang bawat Home Assistant conversation ng sarili nitong OpenClaw session, at nananatili roon ang mga follow-up na tanong. Ipinapadala ng 'Fixed' ang lahat ng kahilingan sa iisang session na itinakda sa Session Key.",
           "api_key": "Kailangan para sa mga cloud provider. Opsyonal para sa mga lokal na server (LM Studio, llama.cpp, Ollama, vLLM): iwanang blangko maliban kung nangangailangan ng key ang server.",
-          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio)."
+          "thinking_mode": "Kinokontrol ang pangangatwiran ng mga model na nag-iisip bago sumagot. Ang Off ang pinakamabilis para sa boses. Walang ipinapadala ang Default ng server. Hindi lahat ng server ay sumusunod dito (hindi maaasahan sa LM Studio).",
+          "strip_trailing_offer": "Pagkatapos ng matagumpay na aksyon sa device, alisin ang pangwakas na tanong gaya ng 'May iba pa ba akong ia-adjust?'."
         }
       },
       "profile_tools": {

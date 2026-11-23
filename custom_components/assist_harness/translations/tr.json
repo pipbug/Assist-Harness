@@ -52,6 +52,7 @@
           "follow_up_phrases": "Takip Ifadeleri",
           "end_words": "Konusmayi Bitirme Kelimeleri",
           "clean_responses": "Sesli Çıktı İçin Yanıtları Temizle",
+          "strip_trailing_offer": "İşlemden sonraki teklifleri kaldır",
           "timeout": "Yanit Zaman Asimi",
           "thinking_mode": "Düşünme",
           "debug_mode": "Hata Ayiklama Modu",
@@ -69,7 +70,8 @@
           "openclaw_agent_id": "Bu profilin isteklerini yanıtlayan OpenClaw ajanı. OpenClaw'da yapılandırılmış bir ajanla eşleşmelidir. Varsayılan 'main' değeridir.",
           "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
           "system_prompt": "Her istekle birlikte OpenClaw'a ek sistem istemi olarak gönderilir, örneğin bir kişilik belirlemek için. Ajanın kendi istemlerini kullanmak için boş bırakın. Sesli uydunun odası otomatik olarak eklenir.",
-          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil)."
+          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil).",
+          "strip_trailing_offer": "Başarılı bir cihaz işleminden sonra 'Başka bir şey ayarlamamı ister misiniz?' gibi son soruyu kaldırır."
         }
       },
       "mcp_server": {
@@ -160,6 +162,7 @@
           "follow_up_phrases": "Takip Ifadeleri",
           "end_words": "Konusmayi Bitirme Kelimeleri",
           "clean_responses": "Sesli Çıktı İçin Yanıtları Temizle",
+          "strip_trailing_offer": "İşlemden sonraki teklifleri kaldır",
           "timeout": "Yanit Zaman Asimi",
           "thinking_mode": "Düşünme",
           "debug_mode": "Hata Ayiklama Modu",
@@ -185,7 +188,8 @@
           "openclaw_agent_id": "Bu profilin isteklerini yanıtlayan OpenClaw ajanı. OpenClaw'da yapılandırılmış bir ajanla eşleşmelidir. Varsayılan 'main' değeridir.",
           "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
           "api_key": "Bulut sağlayıcıları için gereklidir. Yerel sunucular (LM Studio, llama.cpp, Ollama, vLLM) için isteğe bağlıdır: sunucu anahtar istemiyorsa boş bırakın.",
-          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil)."
+          "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil).",
+          "strip_trailing_offer": "Başarılı bir cihaz işleminden sonra 'Başka bir şey ayarlamamı ister misiniz?' gibi son soruyu kaldırır."
         }
       },
       "profile_tools": {
