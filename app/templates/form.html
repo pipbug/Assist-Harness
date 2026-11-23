@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{% if memory %}Edit memory{% else %}New memory{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>{% if memory %}Edit memory{% else %}New memory{% endif %}</h1>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="{% if memory %}/m/{{ memory.id }}{% else %}/new{% endif %}">
+    <label for="text">Memory</label>
+    <textarea id="text" name="text" rows="6" required placeholder="One short fact, in the third person.">{{ memory.text if memory else (form_text or '') }}</textarea>
+
+    <label for="category">Category</label>
+    <select id="category" name="category">
+      <option value="">Uncategorised</option>
+      {% for c in categories %}
+      <option value="{{ c.slug }}"
+        {% if memory and memory.category == c.slug %}selected{% endif %}
+        {% if not memory and form_category == c.slug %}selected{% endif %}>{{ c.label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="tags">Tags</label>
+    <input id="tags" name="tags" type="text" inputmode="text"
+           placeholder="comma, separated"
+           value="{% if memory %}{{ memory.tags | join(', ') }}{% else %}{{ form_tags or '' }}{% endif %}">
+
+    <div class="actions">
+      <button type="submit" class="primary">{% if memory %}Save{% else %}Add{% endif %}</button>
+      <a class="button-link quiet" href="/">Cancel</a>
+    </div>
+  </form>
+  {% if memory %}
+  <form method="post" action="/m/{{ memory.id }}/delete" class="danger-form"
+        onsubmit="return confirm('Delete this memory?');">
+    <button type="submit" class="danger">Delete</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

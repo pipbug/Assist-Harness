@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Memories{% endblock %}
+{% block content %}
+<section class="toolbar">
+  <form class="search" method="get" action="/">
+    <label class="sr-only" for="q">Search</label>
+    <input id="q" name="q" type="search" value="{{ q }}" placeholder="Search memories" enterkeyhint="search">
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    <button type="submit" class="primary">Search</button>
+  </form>
+  <a class="primary button-link" href="/new">Add memory</a>
+</section>
+
+<nav class="chips" aria-label="Categories">
+  <a class="chip{% if not category %} is-on{% endif %}" href="/{% if q %}?q={{ q|urlencode }}{% endif %}">All</a>
+  {% for c in categories %}
+  <a class="chip{% if category == c.slug %} is-on{% endif %}"
+     href="/?category={{ c.slug }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">{{ c.label }}</a>
+  {% endfor %}
+</nav>
+
+{% if memories %}
+<ul class="cards">
+  {% for m in memories %}
+  <li class="card">
+    <a class="card-body" href="/m/{{ m.id }}">
+      <p class="card-text">{{ m.text }}</p>
+      <p class="meta">
+        {% if m.category %}<span class="pill">{{ m.category }}</span>{% endif %}
+        {% for tag in m.tags %}<span class="pill faint">{{ tag }}</span>{% endfor %}
+      </p>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No memories{% if q or category %} match this filter{% endif %} yet.</p>
+{% endif %}
+{% endblock %}

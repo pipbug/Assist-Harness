@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4efe6">
+  <title>{% block title %}Memory{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">Memory</a>
+    {% if request.session.get('auth') %}
+    <form method="post" action="/logout" class="logout">
+      <button type="submit">Log out</button>
+    </form>
+    {% endif %}
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
