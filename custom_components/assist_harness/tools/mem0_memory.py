@@ -1,7 +1,7 @@
-"""[kestrel] Mem0 long-term memory for Assist Harness (fork addition).
+"""[kestrel] Long-term memory for Assist Harness (fork addition).
 
-Talks to Mem0 over its REST API: a self-hosted server (X-API-Key auth, /memories, /search), or
-the hosted Mem0 Platform when the URL is https://api.mem0.ai ("Authorization: Token" auth,
+Talks to a Mem0-compatible REST API: Kira's self-hosted memory service (default, 127.0.0.1:8890), a
+self-hosted Mem0 server (both: X-API-Key auth, /memories, /search), or the hosted Mem0 Platform when the URL is https://api.mem0.ai ("Authorization: Token" auth,
 /v3/memories/add/, /v3/memories/search/; adds are queued server-side and return at once):
 - tools ``recall_memory(query)`` and ``save_memory(fact)`` for the LLM, and
 - ``schedule_turn_save()``: posts each finished turn to Mem0 for fact extraction
@@ -11,6 +11,9 @@ Settings live on a per-profile ``mem0_memory`` tool (``mem0_enabled``, ``mem0_ur
 ``mem0_api_key``, ``mem0_user_id``). Flat options of that shape still work until
 migration. The shared MCP server uses the first profile with Mem0 enabled.
 Turn auto-save uses the profile that just spoke.
+
+The ``mem0_*`` names (tool type, config keys) are kept as they are so stored config and
+migrations keep working; they no longer imply a Mem0 server.
 """
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ CONF_MEM0_ENABLED = "mem0_enabled"
 CONF_MEM0_URL = "mem0_url"
 CONF_MEM0_API_KEY = "mem0_api_key"
 CONF_MEM0_USER_ID = "mem0_user_id"
-DEFAULT_MEM0_URL = "http://127.0.0.1:8888"
+DEFAULT_MEM0_URL = "http://127.0.0.1:8890"
 DEFAULT_MEM0_USER_ID = "kira"
 PLATFORM_HOST = "api.mem0.ai"
 # Logical path -> Mem0 Platform path
@@ -193,7 +196,7 @@ async def _post(hass, settings, path: str, body: Dict[str, Any], timeout) -> Any
         timeout=timeout,
     ) as resp:
         if resp.status >= 300:
-            raise RuntimeError(f"Mem0 {path} HTTP {resp.status}")
+            raise RuntimeError(f"memory {path} HTTP {resp.status}")
         return await resp.json()
 
 
@@ -214,7 +217,7 @@ async def _save_turn(hass, settings, user_text: str, reply_text: str) -> None:
             SAVE_TIMEOUT,
         )
     except Exception as err:  # never let memory break a conversation
-        _LOGGER.warning("Mem0 turn save failed: %s", err or type(err).__name__)
+        _LOGGER.warning("Memory turn save failed: %s", err or type(err).__name__)
 
 
 def schedule_turn_save(hass, entry, user_text: str, reply_text: str) -> None:
@@ -233,7 +236,7 @@ def schedule_turn_save(hass, entry, user_text: str, reply_text: str) -> None:
             name="assist_harness_mem0_turn_save",
         )
     except Exception as err:
-        _LOGGER.warning("Mem0 turn save not scheduled: %s", err)
+        _LOGGER.warning("Memory turn save not scheduled: %s", err)
 
 
 def _text(text: str) -> Dict[str, Any]:
@@ -335,24 +338,24 @@ class Mem0MemoryTool:
             )
             return _text("Saved to memory.")
         except Exception as err:
-            _LOGGER.warning("Mem0 %s failed: %s", tool_name, err or type(err).__name__)
+            _LOGGER.warning("Memory %s failed: %s", tool_name, err or type(err).__name__)
             return _text("Memory is unavailable right now.")
 
     async def _save_fact(self, settings, fact: str) -> None:
+        body: Dict[str, Any] = {
+            "messages": [{"role": "user", "content": fact}],
+            "user_id": settings["user_id"],
+            "metadata": {"source": "voice"},
+        }
+        if not is_platform(settings["url"]):
+            # The self-hosted memory service stores ``text`` verbatim (with near-duplicate
+            # merging) instead of re-extracting a fact the model already wrote; a Mem0 server
+            # ignores the extra field and extracts from ``messages`` as before.
+            body["text"] = fact
         try:
-            await _post(
-                self.hass,
-                settings,
-                "/memories",
-                {
-                    "messages": [{"role": "user", "content": fact}],
-                    "user_id": settings["user_id"],
-                    "metadata": {"source": "voice"},
-                },
-                SAVE_TIMEOUT,
-            )
+            await _post(self.hass, settings, "/memories", body, SAVE_TIMEOUT)
         except Exception as err:
-            _LOGGER.warning("Mem0 save_memory failed: %s", err or type(err).__name__)
+            _LOGGER.warning("Memory save_memory failed: %s", err or type(err).__name__)
 
 
 from .base import Tool, ToolInstance, apply_prefix, strip_prefix
@@ -364,8 +367,9 @@ class _Registered(Tool):
     id = "mem0_memory"
     name = "Mem0 memory"
     description = (
-        "Long-term memory via Mem0. Enable it, set the server URL "
-        "(https://api.mem0.ai for the hosted platform), API key, and user id. "
+        "Long-term memory via the self-hosted memory service (or Mem0). Enable it, set the server URL "
+        "(http://127.0.0.1:8890 for the memory service, https://api.mem0.ai for the hosted Mem0 "
+        "platform), API key, and user id. "
         "recall_memory and save_memory are listed while it is enabled, and each "
         "finished turn is saved in the background."
     )
