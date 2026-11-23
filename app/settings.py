@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     openai_embed_model: str = "text-embedding-3-small"
     default_user_id: str = "kira"
 
+    # Phase 1: extraction and dedup
+    openai_llm_model: str = "gpt-5.4-nano"
+    openai_reasoning_effort: str = "low"
+    extraction_policy_path: str = "/config/extraction_policy.txt"
+    # cosine similarity: at or above dedup_noop a new fact is treated as already known (keep this
+    # very high: a value change such as "lights at 40%" -> "30%" still scores ~0.97);
+    # between dedup_candidate and dedup_noop the LLM decides ADD / UPDATE / NOOP
+    dedup_noop: float = 0.99
+    dedup_candidate: float = 0.70
+    backfill_interval_s: int = 600
+
     @property
     def database_url(self) -> str:
         return (

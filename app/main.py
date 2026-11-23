@@ -13,13 +13,14 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, statu
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from .db import Category, Memory, SessionLocal, init_db
 from .embeddings import content_hash, embed_text, try_embed
+from .extract import extract_facts, ingest, start_backfill_thread
 from .settings import settings
 
 if not settings.session_secret or len(settings.session_secret) < 32:
@@ -35,6 +36,7 @@ UI_PAGE = 100
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
+    start_backfill_thread()
     yield
 
 
@@ -84,6 +86,7 @@ def _memory_dict(m: Memory, score: float | None = None) -> dict:
         "id": str(m.id),
         "user_id": m.user_id,
         "text": m.text,
+        "memory": m.text,  # Mem0-compatible alias
         "category": m.category,
         "tags": list(m.tags or []),
         "source": m.source,
@@ -189,13 +192,28 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 # ---------- API models ----------
 
 class MemoryIn(BaseModel):
-    text: str = Field(..., min_length=1)
+    """Either verbatim ``text`` or a conversation in ``messages`` to extract facts from."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    text: str | None = None
+    messages: list[dict] | None = None
     user_id: str | None = None
     category: str | None = None
     tags: list[str] | str = Field(default_factory=list)
-    source: str = "manual"
+    source: str | None = None
     agent_id: str | None = None
     metadata: dict = Field(default_factory=dict)
+    # verbatim only: False skips near-duplicate handling (exact duplicates are still caught)
+    dedup: bool = True
+    # messages only: False stores each user message verbatim instead of extracting (Mem0's infer)
+    infer: bool = True
+
+    @model_validator(mode="after")
+    def _one_of(self):
+        if not (self.text and self.text.strip()) and not self.messages:
+            raise ValueError("give text or messages")
+        return self
 
 
 class MemoryUpdate(BaseModel):
@@ -209,11 +227,16 @@ class MemoryUpdate(BaseModel):
 
 
 class SearchIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     query: str = Field(..., min_length=1)
     user_id: str | None = None
-    top_k: int = Field(default=8, ge=1, le=50)
+    top_k: int | None = Field(default=None, ge=1, le=50)
+    limit: int | None = Field(default=None, ge=1, le=50)  # Mem0 alias of top_k
     category: str | None = None
     tags: list[str] | None = None
+    threshold: float | None = Field(default=None, ge=-1, le=1)
+    filters: dict | None = None  # Mem0 style: {"user_id": ..., "category": ..., "tags": [...]}
 
 
 class CategoryIn(BaseModel):
@@ -321,22 +344,43 @@ def list_memories(
 
 @app.post("/memories")
 def add_memory(body: MemoryIn, db: Db, _: None = Depends(require_api)):
-    text = body.text.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="text is required")
-    memory, created = _create_memory(
-        db,
-        user_id=(body.user_id or settings.default_user_id).strip(),
-        text=text,
+    user_id = (body.user_id or settings.default_user_id).strip()
+    metadata = dict(body.metadata or {})
+    source = _valid_source(body.source or metadata.pop("source", None))
+    common = dict(
+        user_id=user_id,
         category=_valid_category(db, body.category),
         tags=_parse_tags(body.tags),
-        source=_valid_source(body.source),
+        source=source,
         agent_id=body.agent_id,
-        metadata=body.metadata,
+        metadata=metadata,
     )
-    data = _memory_dict(memory)
-    data["event"] = "ADD" if created else "NOOP"
-    return JSONResponse(data, status_code=201 if created else 200)
+    if body.text and body.text.strip():
+        res = ingest(db, text=body.text.strip(), use_llm=body.dedup, **common)
+        memory = db.get(Memory, uuid.UUID(res["id"]))
+        data = _memory_dict(memory)
+        data["event"] = res["event"]
+        if "previous_memory" in res:
+            data["previous_memory"] = res["previous_memory"]
+        return JSONResponse(data, status_code=201 if res["event"] == "ADD" else 200)
+
+    if body.infer:
+        try:
+            facts = extract_facts(db, user_id, body.messages or [])
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"Extraction failed: {type(exc).__name__}") from exc
+    else:
+        facts = [
+            {"text": " ".join(str(m.get("content") or "").split()), "category": None}
+            for m in body.messages or []
+            if m.get("role", "user") == "user" and str(m.get("content") or "").strip()
+        ]
+    results = []
+    for fact in facts:
+        args = dict(common)
+        args["category"] = common["category"] or fact.get("category")
+        results.append(ingest(db, text=fact["text"], **args))
+    return {"results": results}
 
 
 @app.get("/memories/{memory_id}")
@@ -395,19 +439,26 @@ def delete_memory(memory_id: uuid.UUID, db: Db, _: None = Depends(require_api)):
 
 @app.post("/search")
 def search_memories(body: SearchIn, db: Db, _: None = Depends(require_api)):
-    user_id = (body.user_id or settings.default_user_id).strip()
+    filters = body.filters or {}
+    user_id = str(body.user_id or filters.get("user_id") or settings.default_user_id).strip()
+    category = body.category or filters.get("category")
+    tags = body.tags or filters.get("tags")
+    top_k = body.top_k or body.limit or 8
     try:
         query_vec = embed_text(body.query)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Embedding failed: {type(exc).__name__}") from exc
     distance = Memory.embedding.cosine_distance(query_vec).label("distance")
     stmt = select(Memory, distance).where(Memory.user_id == user_id, Memory.embedding.is_not(None))
-    if body.category:
-        stmt = stmt.where(Memory.category == body.category)
-    for tag in _parse_tags(body.tags):
+    if category:
+        stmt = stmt.where(Memory.category == category)
+    for tag in _parse_tags(tags):
         stmt = stmt.where(Memory.tags.any(tag))
-    rows = db.execute(stmt.order_by(distance).limit(body.top_k)).all()
-    return {"results": [_memory_dict(m, score=1.0 - float(d)) for m, d in rows]}
+    rows = db.execute(stmt.order_by(distance).limit(top_k)).all()
+    results = [_memory_dict(m, score=1.0 - float(d)) for m, d in rows]
+    if body.threshold is not None:
+        results = [r for r in results if r["score"] >= body.threshold]
+    return {"results": results}
 
 
 # ---------- UI ----------

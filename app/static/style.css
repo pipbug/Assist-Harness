@@ -85,3 +85,8 @@ a.pill { color: inherit; text-decoration: none; min-height: 32px; display: inlin
 .quiet-btn { background: none; border: 1px solid var(--line); color: var(--ink); min-width: var(--tap); }
 .quiet-btn:disabled { opacity: 0.35; }
 .danger-text { color: var(--danger); }
+.meta-line { color: var(--muted); font-size: 0.85rem; margin: 1.2rem 0 0; }
+.history { margin-top: 0.8rem; }
+.history summary { min-height: var(--tap); display: flex; align-items: center; cursor: pointer; color: var(--accent); }
+.history ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.5rem; }
+.history .src { display: block; margin: 0; }

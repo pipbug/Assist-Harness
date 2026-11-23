@@ -29,6 +29,18 @@
     </div>
   </form>
   {% if memory %}
+  <p class="meta-line">From {{ memory.source }}{% if memory.agent_id %} ({{ memory.agent_id }}){% endif %} · added {{ memory.created_at.strftime('%b %-d %Y') }}{% if memory.updated_at.strftime('%Y%m%d%H%M') != memory.created_at.strftime('%Y%m%d%H%M') %} · changed {{ memory.updated_at.strftime('%b %-d %Y') }}{% endif %}</p>
+  {% set history = (memory.metadata_json or {}).get('history') or [] %}
+  {% if history %}
+  <details class="history">
+    <summary>Earlier wording ({{ history|length }})</summary>
+    <ul>
+      {% for h in history|reverse %}
+      <li>{{ h.text }} <span class="src">replaced {{ h.replaced_at[:10] }}{% if h.by %} by {{ h.by }}{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
   <form method="post" action="/m/{{ memory.id }}/delete" class="danger-form"
         onsubmit="return confirm('Delete this memory?');">
     <button type="submit" class="danger">Delete</button>

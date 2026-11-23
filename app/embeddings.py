@@ -12,7 +12,7 @@ log = logging.getLogger("memory.embeddings")
 
 
 def content_hash(user_id: str, text: str) -> str:
-    normalised = " ".join((text or "").split()).strip().lower()
+    normalised = " ".join((text or "").split()).strip().lower().rstrip(".!")
     payload = f"{user_id}\n{normalised}".encode()
     return hashlib.sha256(payload).hexdigest()
 
@@ -41,3 +41,9 @@ def try_embed(text: str) -> list[float] | None:
     except Exception as exc:  # noqa: BLE001
         log.warning("embedding failed, saving without vector: %s", type(exc).__name__)
         return None
+
+
+def clean_fact(text: str) -> str:
+    """Collapse whitespace and drop a trailing full stop, so stored facts read consistently."""
+    out = " ".join((text or "").split())
+    return out[:-1] if out.endswith(".") and not out.endswith("..") else out
