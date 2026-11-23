@@ -107,7 +107,7 @@ from .const import (
 from .conversation_history import ConversationHistory
 from .trailing_offer import is_action_tool, strip_trailing_offer
 from .localization import get_spoken_symbols
-from .tools import mem0_memory  # [kestrel]
+from .tools import memory  # [kestrel]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -828,7 +828,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         self, user_input: ConversationInput, conversation_id: str
     ) -> ConversationResult:
         """Process user input with ChatLog tracking."""
-        mem0_memory.begin_turn()  # [kestrel]
+        memory.begin_turn()  # [kestrel]
         self._action_succeeded_this_turn = False
         try:
             _LOGGER.debug("Conversation ID: %s", conversation_id)
@@ -1207,8 +1207,8 @@ class MCPAssistConversationEntity(ConversationEntity):
             conversation_id, user_input.text, response_text, actions=actions_taken
         )
 
-        # [kestrel] Mem0: extract memories from this turn in the background
-        mem0_memory.schedule_turn_save(
+        # [kestrel] memory: extract memories from this turn in the background
+        memory.schedule_turn_save(
             self.hass, self.entry, user_input.text, response_text
         )
 
@@ -1904,7 +1904,7 @@ class MCPAssistConversationEntity(ConversationEntity):
         arguments_str = function.get("arguments")
 
         _LOGGER.info(f"📞 Processing tool call {tool_call_id}: {tool_name}")
-        mem0_memory.note_tool_call(tool_name)  # [kestrel] skip the turn save after save_memory
+        memory.note_tool_call(tool_name)  # [kestrel] skip the turn save after save_memory
 
         try:
             arguments = self._parse_tool_arguments(arguments_str)

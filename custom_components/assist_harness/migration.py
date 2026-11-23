@@ -1,8 +1,10 @@
 """Convert MCP Assist settings into Assist Harness tool instances.
 
 Version 1 stored one shared search provider and flat per-profile Mem0 keys.
-Version 2 stores a ``tools`` list. Importing an ``mcp_assist`` config entry
-uses the same conversion and never writes back to the original entry.
+Version 2 stores a ``tools`` list. Version 3 stores tools as subentries of the
+system entry; 3.3 renames the Mem0-era ``mem0_memory`` tool to ``memory``.
+Importing an ``mcp_assist`` config entry uses the same conversion and never
+writes back to the original entry.
 """
 from __future__ import annotations
 
@@ -23,13 +25,17 @@ from .const import (
     DOMAIN,
     SYSTEM_ENTRY_UNIQUE_ID,
 )
-from .tools.mem0_memory import (
-    CONF_MEM0_API_KEY,
-    CONF_MEM0_ENABLED,
-    CONF_MEM0_URL,
-    CONF_MEM0_USER_ID,
-    DEFAULT_MEM0_URL,
-    DEFAULT_MEM0_USER_ID,
+from .tools.memory import (
+    CONF_MEMORY_ENABLED,
+    CONF_MEMORY_USER_ID,
+    DEFAULT_MEMORY_USER_ID,
+    LEGACY_KEY_MAP,
+    LEGACY_TOOL_TYPE,
+    TOOL_TYPE as MEMORY_TOOL_TYPE,
+    has_legacy_keys,
+    upgrade_legacy_config,
+    upgrade_title,
+    upgrade_tool_record,
 )
 from .tools.registry import CONF_TOOLS, cached_tool_types
 
@@ -46,12 +52,8 @@ SEARCH_KEYS = (
     CONF_SEARXNG_URL,
     CONF_ENABLE_CUSTOM_TOOLS,
 )
-MEM0_KEYS = (
-    CONF_MEM0_ENABLED,
-    CONF_MEM0_URL,
-    CONF_MEM0_API_KEY,
-    CONF_MEM0_USER_ID,
-)
+# flat per-profile keys of version 1 (Mem0 era)
+LEGACY_MEMORY_KEYS = tuple(LEGACY_KEY_MAP)
 
 
 def _merged(data: dict, options: dict) -> dict[str, Any]:
@@ -62,8 +64,6 @@ def _has_search_keys(mapping: dict) -> bool:
     return any(key in mapping for key in SEARCH_KEYS)
 
 
-def _has_mem0_keys(mapping: dict) -> bool:
-    return any(key in mapping for key in MEM0_KEYS)
 
 
 def search_tools_from_legacy(mapping: dict) -> list[dict[str, Any]]:
@@ -109,18 +109,17 @@ def search_tools_from_legacy(mapping: dict) -> list[dict[str, Any]]:
     return [search, read_url]
 
 
-def mem0_tool_from_legacy(mapping: dict) -> dict[str, Any]:
-    """Copy Mem0 settings unchanged onto one per-profile tool."""
+def memory_tool_from_legacy(mapping: dict) -> dict[str, Any]:
+    """Turn version-1 flat ``mem0_*`` keys into one memory tool record."""
+    config = upgrade_legacy_config({key: mapping[key] for key in LEGACY_MEMORY_KEYS if key in mapping})
+    config[CONF_MEMORY_ENABLED] = bool(config.get(CONF_MEMORY_ENABLED, False))
+    config.setdefault("memory_api_key", "")
+    config[CONF_MEMORY_USER_ID] = config.get(CONF_MEMORY_USER_ID) or DEFAULT_MEMORY_USER_ID
     return {
-        "instance_id": "mem0_memory",
-        "type": "mem0_memory",
+        "instance_id": MEMORY_TOOL_TYPE,
+        "type": MEMORY_TOOL_TYPE,
         "prefix": "",
-        "config": {
-            CONF_MEM0_ENABLED: bool(mapping.get(CONF_MEM0_ENABLED, False)),
-            CONF_MEM0_URL: mapping.get(CONF_MEM0_URL) or DEFAULT_MEM0_URL,
-            CONF_MEM0_API_KEY: mapping.get(CONF_MEM0_API_KEY) or "",
-            CONF_MEM0_USER_ID: mapping.get(CONF_MEM0_USER_ID) or DEFAULT_MEM0_USER_ID,
-        },
+        "config": config,
     }
 
 
@@ -135,9 +134,9 @@ def migrate_mapping(
     options = copy.deepcopy(dict(options or {}))
     merged = _merged(data, options)
     if CONF_TOOLS in options:
-        tools = [dict(item) for item in (options.get(CONF_TOOLS) or []) if isinstance(item, dict)]
+        tools = [upgrade_tool_record(dict(item)) for item in (options.get(CONF_TOOLS) or []) if isinstance(item, dict)]
     elif CONF_TOOLS in data:
-        tools = [dict(item) for item in (data.get(CONF_TOOLS) or []) if isinstance(item, dict)]
+        tools = [upgrade_tool_record(dict(item)) for item in (data.get(CONF_TOOLS) or []) if isinstance(item, dict)]
     else:
         tools = []
     existing = {item.get("instance_id") for item in tools}
@@ -148,10 +147,10 @@ def migrate_mapping(
                 tools.append(tool)
                 existing.add(tool["instance_id"])
 
-    if _has_mem0_keys(merged) and "mem0_memory" not in existing:
-        tools.append(mem0_tool_from_legacy(merged))
+    if has_legacy_keys(merged) and MEMORY_TOOL_TYPE not in existing:
+        tools.append(memory_tool_from_legacy(merged))
 
-    for key in SEARCH_KEYS + MEM0_KEYS:
+    for key in SEARCH_KEYS + LEGACY_MEMORY_KEYS:
         data.pop(key, None)
         options.pop(key, None)
     data.pop(CONF_TOOLS, None)
@@ -232,6 +231,8 @@ def plan_migrations(entries) -> list[dict[str, Any]]:
 
 
 SELECTION_MINOR_VERSION = 2
+# 3.3: the mem0_memory tool subentry is now ``memory`` with memory_* keys
+RENAME_MINOR_VERSION = 3
 
 
 def _system_subentries(hass: HomeAssistant):
@@ -287,6 +288,61 @@ def apply_disabled_tool_migration(hass: HomeAssistant, entry: ConfigEntry) -> bo
     return True
 
 
+def rename_legacy_memory_subentries(hass: HomeAssistant) -> None:
+    """Replace ``mem0_memory`` subentries on the system entry with ``memory`` ones.
+
+    Subentry types can't change in place, so each one is re-added under the new type with
+    renamed keys and removed. Profiles that disabled the old subentry keep it disabled.
+    Idempotent: does nothing once no legacy subentry is left.
+    """
+    from types import MappingProxyType
+
+    from homeassistant.config_entries import ConfigSubentry
+
+    system = next(
+        (item for item in hass.config_entries.async_entries(DOMAIN) if item.unique_id == SYSTEM_ENTRY_UNIQUE_ID),
+        None,
+    )
+    if system is None:
+        return
+    renamed: dict[str, str] = {}
+    for old in list(system.subentries.values()):
+        if old.subentry_type != LEGACY_TOOL_TYPE:
+            continue
+        taken = {sub.unique_id for sub in system.subentries.values() if sub.unique_id}
+        unique_id = MEMORY_TOOL_TYPE if old.unique_id in (None, LEGACY_TOOL_TYPE) else old.unique_id
+        if unique_id in taken and unique_id != old.unique_id:
+            unique_id = f"{MEMORY_TOOL_TYPE}_{old.subentry_id[-6:].lower()}"
+        new = ConfigSubentry(
+            data=MappingProxyType(upgrade_legacy_config(dict(old.data))),
+            subentry_type=MEMORY_TOOL_TYPE,
+            title=upgrade_title(old.title),
+            unique_id=unique_id,
+        )
+        hass.config_entries.async_remove_subentry(system, old.subentry_id)
+        hass.config_entries.async_add_subentry(system, new)
+        renamed[old.subentry_id] = new.subentry_id
+        if old.unique_id:
+            renamed[old.unique_id] = new.subentry_id
+        _LOGGER.info("Renamed tool subentry %s (%s) to %s", old.title, LEGACY_TOOL_TYPE, MEMORY_TOOL_TYPE)
+    if not renamed:
+        return
+    pending = hass.data.setdefault(DOMAIN, {}).setdefault("tools_only_entries", set())
+    for profile in hass.config_entries.async_entries(DOMAIN):
+        if profile.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            continue
+        raw = [str(item) for item in (profile.options.get("disabled_tools") or [])]
+        if not any(item in renamed for item in raw):
+            continue
+        updated: list[str] = []
+        for item in raw:
+            item = renamed.get(item, item)
+            if item not in updated:
+                updated.append(item)
+        pending.add(profile.entry_id)
+        hass.config_entries.async_update_entry(profile, options={**profile.options, "disabled_tools": updated})
+
+
 def prune_disabled_tool_ids(hass: HomeAssistant) -> None:
     """Drop deleted subentry ids from every profile's disabled set.
 
@@ -321,7 +377,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await async_ensure_tool_types(hass)
     if entry.version > 3 or (
-        entry.version == 3 and entry.minor_version >= SELECTION_MINOR_VERSION
+        entry.version == 3 and entry.minor_version >= RENAME_MINOR_VERSION
     ):
         return True
 
@@ -351,7 +407,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if other.entry_id == entry.entry_id or other.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
                     continue
                 tools.extend(
-                    item
+                    upgrade_tool_record(item)
                     for item in (other.options.get(CONF_TOOLS) or other.data.get(CONF_TOOLS) or [])
                     if isinstance(item, dict)
                 )
@@ -380,6 +436,16 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 continue
             if profile.version == 3 and profile.minor_version < SELECTION_MINOR_VERSION:
                 apply_disabled_tool_migration(hass, profile)
+
+    # 3.2 -> 3.3: rename the memory tool. Runs from whichever entry migrates first.
+    if entry.version == 3 and entry.minor_version == SELECTION_MINOR_VERSION:
+        rename_legacy_memory_subentries(hass)
+        hass.config_entries.async_update_entry(entry, minor_version=RENAME_MINOR_VERSION)
+        if entry.unique_id == SYSTEM_ENTRY_UNIQUE_ID:
+            # profiles finished above have nothing of their own to rename
+            for profile in hass.config_entries.async_entries(DOMAIN):
+                if profile.version == 3 and profile.minor_version == SELECTION_MINOR_VERSION:
+                    hass.config_entries.async_update_entry(profile, minor_version=RENAME_MINOR_VERSION)
     return True
 
 
@@ -464,7 +530,7 @@ class _ImportView:
 def _make_entry(plan: dict[str, Any]) -> ConfigEntry:
     return ConfigEntry(
         version=3,
-        minor_version=SELECTION_MINOR_VERSION,
+        minor_version=RENAME_MINOR_VERSION,
         domain=DOMAIN,
         title=plan["title"],
         data=plan["data"],

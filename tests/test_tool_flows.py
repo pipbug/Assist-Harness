@@ -161,13 +161,13 @@ async def test_subentry_flows_add_reconfigure_and_delete(hass):
         "duckduckgo": {"name": "DuckDuckGo", "prefix": "ddg"},
         "searxng": {"name": "Home search", "prefix": "home", "url": "http://192.168.1.10:8888"},
         "read_url": {"name": "Read URL", "prefix": ""},
-        "mem0_memory": {
-            "name": "Mem0 memory",
+        "memory": {
+            "name": "Memory",
             "prefix": "",
-            "mem0_enabled": True,
-            "mem0_url": "https://api.mem0.ai",
-            "mem0_api_key": "tok",
-            "mem0_user_id": "kira",
+            "memory_enabled": True,
+            "memory_url": "http://127.0.0.1:8890",
+            "memory_api_key": "tok",
+            "memory_user_id": "kira",
         },
         "external_mcp": {
             "name": "Demo server",
@@ -191,7 +191,7 @@ async def test_subentry_flows_add_reconfigure_and_delete(hass):
             key = marker.schema
             assert key in block["data"], f"{tool_id}.{key} has no label"
             assert key in block["data_description"], f"{tool_id}.{key} has no description"
-            if key in ("api_key", "mem0_api_key", "bearer_token"):
+            if key in ("api_key", "memory_api_key", "bearer_token"):
                 assert isinstance(result["data_schema"].schema[marker], TextSelector)
                 assert result["data_schema"].schema[marker].config["type"] == TextSelectorType.PASSWORD
         created = await hass.config_entries.subentries.async_configure(result["flow_id"], payload)
@@ -200,8 +200,8 @@ async def test_subentry_flows_add_reconfigure_and_delete(hass):
 
     by_type = {sub.subentry_type: sub for sub in entry.subentries.values()}
     assert set(by_type) == set(payloads)
-    assert by_type["mem0_memory"].data["mem0_url"] == "https://api.mem0.ai"
-    assert by_type["mem0_memory"].data["mem0_user_id"] == "kira"
+    assert by_type["memory"].data["memory_url"] == "http://127.0.0.1:8890"
+    assert by_type["memory"].data["memory_user_id"] == "kira"
     assert by_type["brave"].data["api_key"] == "abc"
     assert by_type["searxng"].data["prefix"] == "home_"
     # Drop the external server before the registry connects to it.
@@ -337,7 +337,7 @@ async def test_agent_module_loads_on_this_home_assistant(hass):
 
 
 async def test_v2_options_migrate_to_subentries(hass):
-    """Kira's installed v2 layout: Brave and read_url on the system entry, Mem0 on the profile."""
+    """Kira's installed v2 layout: Brave and read_url on the system entry, Mem0-era memory on the profile."""
     system = MockConfigEntry(
         domain=DOMAIN,
         unique_id=SYSTEM_ENTRY_UNIQUE_ID,
@@ -384,14 +384,15 @@ async def test_v2_options_migrate_to_subentries(hass):
     assert "tools" not in profile.options
     assert profile.data["system_prompt"] == "be kind"
     by_type = {sub.subentry_type: sub for sub in system.subentries.values()}
-    assert set(by_type) == {"brave", "read_url", "mem0_memory"}
+    assert set(by_type) == {"brave", "read_url", "memory"}
     assert by_type["brave"].data["api_key"] == "abc"
-    assert by_type["mem0_memory"].data["mem0_url"] == "https://api.mem0.ai"
-    assert by_type["mem0_memory"].data["mem0_api_key"] == "tok"
-    assert by_type["mem0_memory"].data["mem0_user_id"] == "kira"
-    assert by_type["mem0_memory"].data["mem0_enabled"] is True
-    assert system.minor_version == 2
-    assert profile.minor_version == 2
+    assert by_type["memory"].data["memory_url"] == "https://api.mem0.ai"
+    assert by_type["memory"].data["memory_api_key"] == "tok"
+    assert by_type["memory"].data["memory_user_id"] == "kira"
+    assert by_type["memory"].data["memory_enabled"] is True
+    assert not any(key.startswith("mem0_") for key in by_type["memory"].data)
+    assert system.minor_version == 3
+    assert profile.minor_version == 3
     assert "profile_tools" not in profile.options
     assert "disabled_tools" not in profile.options
 
@@ -727,11 +728,11 @@ async def test_profile_tools_allowlist_migrates_to_disabled_set(hass):
     everyone.add_to_hass(hass)
     assert await async_migrate_entry(hass, profile)
     assert await async_migrate_entry(hass, everyone)
-    assert profile.minor_version == 2
+    assert profile.minor_version == 3
     assert profile.options["disabled_tools"] == ["sub-brave"]
     assert profile.options["system_prompt"] == "be kind"
     assert "profile_tools" not in profile.options
-    assert everyone.minor_version == 2
+    assert everyone.minor_version == 3
     assert "disabled_tools" not in everyone.options
     assert "profile_tools" not in everyone.options
 
@@ -773,8 +774,8 @@ async def test_system_migration_finishes_a_deferred_allowlist(hass):
     assert profile.minor_version == 1
     assert profile.options["profile_tools"] == ["read_url"]
     assert await async_migrate_entry(hass, system)
-    assert system.minor_version == 2
-    assert profile.minor_version == 2
+    assert system.minor_version == 3
+    assert profile.minor_version == 3
     assert "profile_tools" not in profile.options
     brave = next(sub for sub in system.subentries.values() if sub.subentry_type == "brave")
     assert profile.options["disabled_tools"] == [brave.subentry_id]
