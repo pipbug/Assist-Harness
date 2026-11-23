@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
           "system_prompt": "Her istekle birlikte OpenClaw'a ek sistem istemi olarak gönderilir, örneğin bir kişilik belirlemek için. Ajanın kendi istemlerini kullanmak için boş bırakın. Sesli uydunun odası otomatik olarak eklenir.",
           "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil).",
-          "strip_trailing_offer": "Başarılı bir işlemden sonra 'Başka bir şey ayarlamamı ister misiniz?' gibi son soruyu kaldırır."
+          "strip_trailing_offer": "'Başka bir şey bulayım mı?' gibi son teklif sorusunu ve başarılı bir işlemden sonraki her son soruyu kaldırır."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation', Home Assistant'taki her konuşmaya kendi OpenClaw oturumunu verir ve takip soruları o oturumda kalır. 'Fixed', tüm istekleri Oturum Anahtarı'nda belirlenen tek oturuma gönderir.",
           "api_key": "Bulut sağlayıcıları için gereklidir. Yerel sunucular (LM Studio, llama.cpp, Ollama, vLLM) için isteğe bağlıdır: sunucu anahtar istemiyorsa boş bırakın.",
           "thinking_mode": "Yanıt vermeden önce düşünen modellerin akıl yürütmesini denetler. Kapalı, ses için en hızlısıdır. Sunucu varsayılanı hiçbir şey göndermez. Her sunucu bu ayara uymaz (LM Studio'da güvenilir değil).",
-          "strip_trailing_offer": "Başarılı bir işlemden sonra 'Başka bir şey ayarlamamı ister misiniz?' gibi son soruyu kaldırır."
+          "strip_trailing_offer": "'Başka bir şey bulayım mı?' gibi son teklif sorusunu ve başarılı bir işlemden sonraki her son soruyu kaldırır."
         }
       },
       "profile_tools": {

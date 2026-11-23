@@ -1176,7 +1176,7 @@ class MCPAssistConversationEntity(ConversationEntity):
             )
             if stripped != response_text:
                 _LOGGER.debug(
-                    "Stripped trailing offer after a successful action: %r -> %r",
+                    "Stripped trailing offer: %r -> %r",
                     response_text,
                     stripped,
                 )
@@ -1836,12 +1836,14 @@ class MCPAssistConversationEntity(ConversationEntity):
         return text
 
     async def _trigger_sentence_tts(self, text: str, response_so_far: str) -> None:
-        """Speak a streamed sentence, skipping a trailing offer after an action."""
+        """Speak a streamed sentence, skipping a trailing offer question."""
         if (
             self.strip_trailing_offer_enabled
-            and self._action_succeeded_this_turn
             and text.strip().endswith("?")
-            and strip_trailing_offer(response_so_far, True) != response_so_far
+            and strip_trailing_offer(
+                response_so_far, self._action_succeeded_this_turn
+            )
+            != response_so_far
         ):
             _LOGGER.debug("Skipping streamed TTS of trailing offer: %r", text)
             return

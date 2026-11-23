@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' dává každé konverzaci v Home Assistant vlastní relaci OpenClaw a navazující otázky v ní zůstávají. 'Fixed' posílá všechny požadavky do jediné relace nastavené v poli Klíč relace.",
           "system_prompt": "Odesílá se do OpenClaw s každým požadavkem jako další systémová instrukce, například pro nastavení persony. Nechte prázdné, chcete-li použít vlastní instrukce agenta. Místnost hlasového satelitu se přidá automaticky.",
           "thinking_mode": "Řídí uvažování modelů, které před odpovědí přemýšlejí. Vypnuto je pro hlas nejrychlejší. Výchozí nastavení serveru nic neodesílá. Ne každý server to respektuje (v LM Studio nespolehlivé).",
-          "strip_trailing_offer": "Po úspěšné akci odstranit závěrečnou otázku typu „Mohu ještě s něčím pomoci?“."
+          "strip_trailing_offer": "Odstranit závěrečnou nabídkovou otázku typu „Mám najít něco jiného?“, a jakoukoli závěrečnou otázku po úspěšné akci."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' dává každé konverzaci v Home Assistant vlastní relaci OpenClaw a navazující otázky v ní zůstávají. 'Fixed' posílá všechny požadavky do jediné relace nastavené v poli Klíč relace.",
           "api_key": "Povinný pro cloudové poskytovatele. Pro místní servery (LM Studio, llama.cpp, Ollama, vLLM) volitelný: ponechte prázdné, pokud server klíč nevyžaduje.",
           "thinking_mode": "Řídí uvažování modelů, které před odpovědí přemýšlejí. Vypnuto je pro hlas nejrychlejší. Výchozí nastavení serveru nic neodesílá. Ne každý server to respektuje (v LM Studio nespolehlivé).",
-          "strip_trailing_offer": "Po úspěšné akci odstranit závěrečnou otázku typu „Mohu ještě s něčím pomoci?“."
+          "strip_trailing_offer": "Odstranit závěrečnou nabídkovou otázku typu „Mám najít něco jiného?“, a jakoukoli závěrečnou otázku po úspěšné akci."
         }
       },
       "profile_tools": {

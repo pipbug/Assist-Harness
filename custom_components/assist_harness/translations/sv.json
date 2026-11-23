@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' ger varje samtal i Home Assistant en egen OpenClaw-session, och uppföljningsfrågor stannar i den. 'Fixed' skickar alla förfrågningar till den enda session som anges i Sessionsnyckel.",
           "system_prompt": "Skickas till OpenClaw med varje förfrågan som en extra systeminstruktion, till exempel för att ange en persona. Lämna tomt för att använda agentens egna instruktioner. Röstsatellitens rum läggs till automatiskt.",
           "thinking_mode": "Styr resonerandet hos modeller som tänker innan de svarar. Av är snabbast för röst. Serverstandard skickar ingenting. Alla servrar följer inte inställningen (opålitligt i LM Studio).",
-          "strip_trailing_offer": "Efter en lyckad åtgärd, ta bort en avslutande fråga som «Vill du att jag justerar något mer?»."
+          "strip_trailing_offer": "Ta bort en avslutande erbjudandefråga som «Ska jag hitta något annat?», och varje avslutande fråga efter en lyckad åtgärd."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' ger varje samtal i Home Assistant en egen OpenClaw-session, och uppföljningsfrågor stannar i den. 'Fixed' skickar alla förfrågningar till den enda session som anges i Sessionsnyckel.",
           "api_key": "Krävs för molnleverantörer. Valfri för lokala servrar (LM Studio, llama.cpp, Ollama, vLLM): lämna tomt om servern inte kräver en nyckel.",
           "thinking_mode": "Styr resonerandet hos modeller som tänker innan de svarar. Av är snabbast för röst. Serverstandard skickar ingenting. Alla servrar följer inte inställningen (opålitligt i LM Studio).",
-          "strip_trailing_offer": "Efter en lyckad åtgärd, ta bort en avslutande fråga som «Vill du att jag justerar något mer?»."
+          "strip_trailing_offer": "Ta bort en avslutande erbjudandefråga som «Ska jag hitta något annat?», och varje avslutande fråga efter en lyckad åtgärd."
         }
       },
       "profile_tools": {

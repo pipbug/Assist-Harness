@@ -20,6 +20,7 @@ assert _SPEC.loader is not None
 _SPEC.loader.exec_module(_MOD)
 strip_trailing_offer = _MOD.strip_trailing_offer
 is_action_tool = _MOD.is_action_tool
+is_offer_question = _MOD.is_offer_question
 
 
 def test_drops_question_after_action():
@@ -31,7 +32,7 @@ def test_drops_question_after_action():
 
 
 def test_keeps_question_when_no_action():
-    text = "The printer light is off. Would you like me to adjust anything else?"
+    text = "The printer light is off. Which room is that in?"
     assert strip_trailing_offer(text, action_succeeded=False) == text
 
 
@@ -91,7 +92,7 @@ def test_save_memory_triggers_strip():
 
 
 def test_recall_memory_does_not_trigger_strip():
-    text = "You prefer dim lights. Would you like me to adjust anything else?"
+    text = "You prefer dim lights. Which room should I use?"
     assert not is_action_tool("recall_memory")
     assert not is_action_tool("home_recall_memory")
     assert (
@@ -118,3 +119,39 @@ def test_action_tool_classification():
     assert not is_action_tool("read_url")
     assert not is_action_tool("")
     assert not is_action_tool(None)
+
+
+def test_joke_example_offer_is_stripped_without_action():
+    text = (
+        "It is a rather well-worn one, but it does have its charms. "
+        "Shall I find something else for you, miss?"
+    )
+    assert (
+        strip_trailing_offer(text, action_succeeded=False)
+        == "It is a rather well-worn one, but it does have its charms."
+    )
+
+
+def test_clarifying_questions_kept():
+    cases = (
+        "I found two lights. Which light, miss?",
+        "I am not sure. Did you mean the bedroom lamp?",
+        "The heating is ready. What temperature would you like?",
+    )
+    for text in cases:
+        assert strip_trailing_offer(text, action_succeeded=False) == text
+        assert not is_offer_question(text.split(". ", 1)[1])
+
+
+def test_single_sentence_offer_kept():
+    text = "Shall I find something else for you, miss?"
+    assert is_offer_question(text)
+    assert strip_trailing_offer(text, action_succeeded=False) == text
+    assert strip_trailing_offer(text, action_succeeded=True) == text
+
+
+def test_offer_after_leading_conjunction():
+    text = "That one is on. But shall I find something else?"
+    assert (
+        strip_trailing_offer(text, action_succeeded=False) == "That one is on."
+    )

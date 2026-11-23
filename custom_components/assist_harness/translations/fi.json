@@ -71,7 +71,7 @@
           "openclaw_session_mode": "'Per conversation' antaa jokaiselle Home Assistant -keskustelulle oman OpenClaw-istunnon, ja jatkokysymykset pysyvät siinä. 'Fixed' lähettää kaikki pyynnöt yhteen Istuntoavain-kentässä määritettyyn istuntoon.",
           "system_prompt": "Lähetetään OpenClawille jokaisen pyynnön mukana lisäjärjestelmäkehotteena, esimerkiksi persoonan määrittämiseksi. Jätä tyhjäksi, jos haluat käyttää agentin omia kehotteita. Puhesatelliitin huone lisätään automaattisesti.",
           "thinking_mode": "Ohjaa päättelyä malleissa, jotka ajattelevat ennen vastaamista. Pois on puheelle nopein. Palvelimen oletus ei lähetä mitään. Kaikki palvelimet eivät noudata asetusta (epäluotettava LM Studiossa).",
-          "strip_trailing_offer": "Poista onnistuneen toiminnon jälkeen loppukysymys, esimerkiksi «Haluatko, että säädän vielä jotain?»."
+          "strip_trailing_offer": "Poista lopun tarjouskysymys, esimerkiksi «Etsinkö jotain muuta?», sekä mikä tahansa loppukysymys onnistuneen toiminnon jälkeen."
         }
       },
       "mcp_server": {
@@ -189,7 +189,7 @@
           "openclaw_session_mode": "'Per conversation' antaa jokaiselle Home Assistant -keskustelulle oman OpenClaw-istunnon, ja jatkokysymykset pysyvät siinä. 'Fixed' lähettää kaikki pyynnöt yhteen Istuntoavain-kentässä määritettyyn istuntoon.",
           "api_key": "Pakollinen pilvipalveluntarjoajille. Valinnainen paikallisille palvelimille (LM Studio, llama.cpp, Ollama, vLLM): jätä tyhjäksi, ellei palvelin vaadi avainta.",
           "thinking_mode": "Ohjaa päättelyä malleissa, jotka ajattelevat ennen vastaamista. Pois on puheelle nopein. Palvelimen oletus ei lähetä mitään. Kaikki palvelimet eivät noudata asetusta (epäluotettava LM Studiossa).",
-          "strip_trailing_offer": "Poista onnistuneen toiminnon jälkeen loppukysymys, esimerkiksi «Haluatko, että säädän vielä jotain?»."
+          "strip_trailing_offer": "Poista lopun tarjouskysymys, esimerkiksi «Etsinkö jotain muuta?», sekä mikä tahansa loppukysymys onnistuneen toiminnon jälkeen."
         }
       },
       "profile_tools": {
