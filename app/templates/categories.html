@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Categories · Memory{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Categories</h1>
+  <p class="lede">Rename, reorder or remove. Removing a category keeps its memories; they become uncategorised.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/c" class="inline-add">
+    <label for="new-label">New category</label>
+    <div class="row">
+      <input id="new-label" name="label" type="text" required maxlength="128" placeholder="e.g. Music" autocomplete="off">
+      <button type="submit" class="primary">Add</button>
+    </div>
+  </form>
+</section>
+
+<ul class="cats">
+  {% for c in categories %}
+  <li class="card cat">
+    <form method="post" action="/c/{{ c.slug }}" class="row">
+      <label class="sr-only" for="l-{{ c.slug }}">Name of {{ c.label }}</label>
+      <input id="l-{{ c.slug }}" name="label" type="text" value="{{ c.label }}" required maxlength="128">
+      <button type="submit" class="quiet-btn">Save</button>
+    </form>
+    <div class="row tools">
+      <span class="n">{{ counts.get(c.slug, 0) }} memories</span>
+      <form method="post" action="/c/{{ c.slug }}"><input type="hidden" name="move" value="up">
+        <button type="submit" class="quiet-btn" aria-label="Move {{ c.label }} up" {% if loop.first %}disabled{% endif %}>↑</button></form>
+      <form method="post" action="/c/{{ c.slug }}"><input type="hidden" name="move" value="down">
+        <button type="submit" class="quiet-btn" aria-label="Move {{ c.label }} down" {% if loop.last %}disabled{% endif %}>↓</button></form>
+      <form method="post" action="/c/{{ c.slug }}/delete"
+            onsubmit="return confirm('Remove “{{ c.label }}”? Its {{ counts.get(c.slug, 0) }} memories stay, uncategorised.');">
+        <button type="submit" class="quiet-btn danger-text" aria-label="Remove {{ c.label }}">Remove</button></form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+<a class="button-link quiet more" href="/">Back to memories</a>
+{% endblock %}

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 
 import httpx
 
 from .settings import settings
 
 EMBED_URL = "https://api.openai.com/v1/embeddings"
+log = logging.getLogger("memory.embeddings")
 
 
 def content_hash(user_id: str, text: str) -> str:
@@ -30,3 +32,12 @@ def embed_text(text: str) -> list[float]:
     resp.raise_for_status()
     data = resp.json()
     return data["data"][0]["embedding"]
+
+
+def try_embed(text: str) -> list[float] | None:
+    """Embed, but never block a write: on failure, store NULL and let it be backfilled later."""
+    try:
+        return embed_text(text)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("embedding failed, saving without vector: %s", type(exc).__name__)
+        return None

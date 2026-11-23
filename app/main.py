@@ -2,27 +2,34 @@ from __future__ import annotations
 
 import hmac
 import re
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-from sqlalchemy import or_, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from .db import Category, Memory, SessionLocal, init_db
-from .embeddings import content_hash, embed_text
+from .embeddings import content_hash, embed_text, try_embed
 from .settings import settings
+
+if not settings.session_secret or len(settings.session_secret) < 32:
+    raise RuntimeError("SESSION_SECRET must be set (32+ chars)")
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 TAG_SPLIT = re.compile(r"[,\n]+")
+SLUG_STRIP = re.compile(r"[^a-z0-9]+")
+SOURCES = {"voice", "manual", "winston", "claude", "import"}
+UI_PAGE = 100
 
 
 @asynccontextmanager
@@ -31,14 +38,14 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Memory", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Memory", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.session_secret or "change-me",
+    secret_key=settings.session_secret,
     session_cookie="memory_session",
     same_site="lax",
     https_only=True,
-    max_age=60 * 60 * 24 * 14,
+    max_age=60 * 60 * 24 * 30,
 )
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
@@ -54,19 +61,22 @@ def get_db():
 Db = Annotated[Session, Depends(get_db)]
 
 
+# ---------- helpers ----------
+
 def _parse_tags(tags: list[str] | str | None) -> list[str]:
     if tags is None:
         return []
-    if isinstance(tags, str):
-        parts = TAG_SPLIT.split(tags)
-    else:
-        parts = tags
+    parts = TAG_SPLIT.split(tags) if isinstance(tags, str) else tags
     seen: list[str] = []
     for raw in parts:
-        tag = " ".join(raw.split()).strip().lower()
+        tag = " ".join(str(raw).split()).strip().lower()[:64]
         if tag and tag not in seen:
             seen.append(tag)
     return seen
+
+
+def _slugify(label: str) -> str:
+    return SLUG_STRIP.sub("-", label.strip().lower()).strip("-")[:64]
 
 
 def _memory_dict(m: Memory, score: float | None = None) -> dict:
@@ -83,7 +93,7 @@ def _memory_dict(m: Memory, score: float | None = None) -> dict:
         "updated_at": m.updated_at.isoformat() if m.updated_at else None,
     }
     if score is not None:
-        data["score"] = score
+        data["score"] = round(score, 4)
     return data
 
 
@@ -93,10 +103,56 @@ def _valid_category(db: Session, slug: str | None) -> str | None:
     slug = slug.strip().lower()
     if slug in ("", "none", "uncategorised", "uncategorized"):
         return None
-    found = db.get(Category, slug)
-    if not found:
+    if not db.get(Category, slug):
         raise HTTPException(status_code=400, detail=f"Unknown category: {slug}")
     return slug
+
+
+def _valid_source(source: str | None) -> str:
+    source = (source or "manual").strip().lower()
+    if source not in SOURCES:
+        raise HTTPException(status_code=400, detail=f"source must be one of {sorted(SOURCES)}")
+    return source
+
+
+def _find_duplicate(db: Session, user_id: str, chash: str, exclude: uuid.UUID | None = None) -> Memory | None:
+    stmt = select(Memory).where(Memory.user_id == user_id, Memory.content_hash == chash)
+    if exclude:
+        stmt = stmt.where(Memory.id != exclude)
+    return db.scalars(stmt.limit(1)).first()
+
+
+def _create_memory(
+    db: Session,
+    *,
+    user_id: str,
+    text: str,
+    category: str | None,
+    tags: list[str],
+    source: str,
+    agent_id: str | None = None,
+    metadata: dict | None = None,
+) -> tuple[Memory, bool]:
+    """Insert a memory, or return the existing exact duplicate. Returns (memory, created)."""
+    chash = content_hash(user_id, text)
+    existing = _find_duplicate(db, user_id, chash)
+    if existing:
+        return existing, False
+    memory = Memory(
+        user_id=user_id,
+        text=text,
+        category=category,
+        tags=tags,
+        source=source,
+        agent_id=agent_id,
+        metadata_json=metadata or {},
+        content_hash=chash,
+        embedding=try_embed(text),
+    )
+    db.add(memory)
+    db.commit()
+    db.refresh(memory)
+    return memory, True
 
 
 def _ui_logged_in(request: Request) -> bool:
@@ -106,15 +162,31 @@ def _ui_logged_in(request: Request) -> bool:
 def require_api(request: Request) -> None:
     supplied = request.headers.get("x-api-key") or ""
     expected = settings.memory_api_key or ""
-    if expected and hmac.compare_digest(supplied, expected):
+    if expected and hmac.compare_digest(supplied.encode(), expected.encode()):
         return
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing API key")
 
 
+class _LoginRedirect(Exception):
+    pass
+
+
 def require_ui(request: Request) -> None:
     if not _ui_logged_in(request):
-        raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/login"})
+        raise _LoginRedirect()
 
+
+@app.exception_handler(_LoginRedirect)
+async def _login_redirect(_request: Request, _exc: _LoginRedirect):
+    return RedirectResponse("/login", status_code=303)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException):
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers)
+
+
+# ---------- API models ----------
 
 class MemoryIn(BaseModel):
     text: str = Field(..., min_length=1)
@@ -144,22 +216,91 @@ class SearchIn(BaseModel):
     tags: list[str] | None = None
 
 
+class CategoryIn(BaseModel):
+    label: str = Field(..., min_length=1, max_length=128)
+    slug: str | None = None
+    sort_order: int | None = None
+
+
+class CategoryUpdate(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=128)
+    sort_order: int | None = None
+
+
+# ---------- API ----------
+
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
 
 
+def _cats(db: Session) -> list[Category]:
+    return list(db.scalars(select(Category).order_by(Category.sort_order, Category.label)).all())
+
+
+def _cat_dict(c: Category) -> dict:
+    return {"slug": c.slug, "label": c.label, "sort_order": c.sort_order}
+
+
+def _add_category(db: Session, label: str, slug: str | None, sort_order: int | None) -> Category:
+    label = " ".join(label.split())
+    slug = _slugify(slug or label)
+    if not slug:
+        raise HTTPException(status_code=400, detail="Category needs a name with letters or numbers")
+    if db.get(Category, slug):
+        raise HTTPException(status_code=409, detail=f"Category already exists: {slug}")
+    if sort_order is None:
+        sort_order = (db.scalar(select(func.max(Category.sort_order))) or 0) + 10
+    cat = Category(slug=slug, label=label, sort_order=sort_order)
+    db.add(cat)
+    db.commit()
+    return cat
+
+
+def _delete_category(db: Session, slug: str) -> int:
+    cat = db.get(Category, slug)
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    moved = db.execute(update(Memory).where(Memory.category == slug).values(category=None)).rowcount
+    db.delete(cat)
+    db.commit()
+    return moved or 0
+
+
 @app.get("/categories")
 def list_categories(db: Db, _: None = Depends(require_api)):
-    rows = db.scalars(select(Category).order_by(Category.sort_order, Category.label)).all()
-    return [{"slug": c.slug, "label": c.label, "sort_order": c.sort_order} for c in rows]
+    return [_cat_dict(c) for c in _cats(db)]
+
+
+@app.post("/categories", status_code=201)
+def create_category(body: CategoryIn, db: Db, _: None = Depends(require_api)):
+    return _cat_dict(_add_category(db, body.label, body.slug, body.sort_order))
+
+
+@app.put("/categories/{slug}")
+def update_category(slug: str, body: CategoryUpdate, db: Db, _: None = Depends(require_api)):
+    cat = db.get(Category, slug)
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    if body.label is not None:
+        cat.label = " ".join(body.label.split())
+    if body.sort_order is not None:
+        cat.sort_order = body.sort_order
+    db.commit()
+    return _cat_dict(cat)
+
+
+@app.delete("/categories/{slug}")
+def delete_category(slug: str, db: Db, _: None = Depends(require_api)):
+    moved = _delete_category(db, slug)
+    return {"ok": True, "slug": slug, "uncategorised": moved}
 
 
 @app.get("/memories")
 def list_memories(
     db: Db,
     _: None = Depends(require_api),
-    user_id: str = Query(default="kira"),
+    user_id: str = Query(default=settings.default_user_id),
     category: str | None = None,
     tag: str | None = None,
     q: str | None = None,
@@ -172,35 +313,30 @@ def list_memories(
     if tag:
         stmt = stmt.where(Memory.tags.any(tag.strip().lower()))
     if q:
-        stmt = stmt.where(Memory.text.ilike(f"%{q}%"))
-    stmt = stmt.order_by(Memory.updated_at.desc()).offset(offset).limit(limit)
-    rows = db.scalars(stmt).all()
-    return {"results": [_memory_dict(m) for m in rows]}
+        stmt = stmt.where(Memory.text.ilike(f"%{q.strip()}%"))
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    rows = db.scalars(stmt.order_by(Memory.updated_at.desc()).offset(offset).limit(limit)).all()
+    return {"results": [_memory_dict(m) for m in rows], "total": total, "limit": limit, "offset": offset}
 
 
-@app.post("/memories", status_code=201)
+@app.post("/memories")
 def add_memory(body: MemoryIn, db: Db, _: None = Depends(require_api)):
     text = body.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="text is required")
-    user_id = (body.user_id or settings.default_user_id).strip()
-    category = _valid_category(db, body.category)
-    tags = _parse_tags(body.tags)
-    memory = Memory(
-        user_id=user_id,
+    memory, created = _create_memory(
+        db,
+        user_id=(body.user_id or settings.default_user_id).strip(),
         text=text,
-        category=category,
-        tags=tags,
-        source=body.source or "manual",
+        category=_valid_category(db, body.category),
+        tags=_parse_tags(body.tags),
+        source=_valid_source(body.source),
         agent_id=body.agent_id,
-        metadata_json=body.metadata or {},
-        content_hash=content_hash(user_id, text),
-        embedding=embed_text(text),
+        metadata=body.metadata,
     )
-    db.add(memory)
-    db.commit()
-    db.refresh(memory)
-    return _memory_dict(memory)
+    data = _memory_dict(memory)
+    data["event"] = "ADD" if created else "NOOP"
+    return JSONResponse(data, status_code=201 if created else 200)
 
 
 @app.get("/memories/{memory_id}")
@@ -223,7 +359,7 @@ def update_memory(memory_id: uuid.UUID, body: MemoryUpdate, db: Db, _: None = De
             raise HTTPException(status_code=400, detail="text cannot be empty")
         text_changed = text != memory.text
         memory.text = text
-    if body.user_id is not None:
+    if body.user_id is not None and body.user_id.strip() != memory.user_id:
         memory.user_id = body.user_id.strip()
         text_changed = True
     if body.category is not None:
@@ -231,14 +367,16 @@ def update_memory(memory_id: uuid.UUID, body: MemoryUpdate, db: Db, _: None = De
     if body.tags is not None:
         memory.tags = _parse_tags(body.tags)
     if body.source is not None:
-        memory.source = body.source
+        memory.source = _valid_source(body.source)
     if body.agent_id is not None:
-        memory.agent_id = body.agent_id
+        memory.agent_id = body.agent_id or None
     if body.metadata is not None:
         memory.metadata_json = body.metadata
     if text_changed:
         memory.content_hash = content_hash(memory.user_id, memory.text)
-        memory.embedding = embed_text(memory.text)
+        if _find_duplicate(db, memory.user_id, memory.content_hash, exclude=memory.id):
+            raise HTTPException(status_code=409, detail="An identical memory already exists")
+        memory.embedding = try_embed(memory.text)
     memory.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(memory)
@@ -258,50 +396,39 @@ def delete_memory(memory_id: uuid.UUID, db: Db, _: None = Depends(require_api)):
 @app.post("/search")
 def search_memories(body: SearchIn, db: Db, _: None = Depends(require_api)):
     user_id = (body.user_id or settings.default_user_id).strip()
-    query_vec = embed_text(body.query)
-    stmt = select(Memory).where(Memory.user_id == user_id, Memory.embedding.is_not(None))
+    try:
+        query_vec = embed_text(body.query)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Embedding failed: {type(exc).__name__}") from exc
+    distance = Memory.embedding.cosine_distance(query_vec).label("distance")
+    stmt = select(Memory, distance).where(Memory.user_id == user_id, Memory.embedding.is_not(None))
     if body.category:
         stmt = stmt.where(Memory.category == body.category)
-    if body.tags:
-        for tag in _parse_tags(body.tags):
-            stmt = stmt.where(Memory.tags.any(tag))
-    stmt = stmt.order_by(Memory.embedding.cosine_distance(query_vec)).limit(body.top_k)
-    rows = db.scalars(stmt).all()
-    results = []
-    for m in rows:
-        # cosine distance = 1 - similarity; pgvector cosine_distance
-        results.append(_memory_dict(m))
-    return {"results": results}
+    for tag in _parse_tags(body.tags):
+        stmt = stmt.where(Memory.tags.any(tag))
+    rows = db.execute(stmt.order_by(distance).limit(body.top_k)).all()
+    return {"results": [_memory_dict(m, score=1.0 - float(d)) for m, d in rows]}
 
 
 # ---------- UI ----------
 
-def _cats(db: Session) -> list[Category]:
-    return list(db.scalars(select(Category).order_by(Category.sort_order, Category.label)).all())
-
-
 @app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request, error: str | None = None):
+def login_page(request: Request):
     if _ui_logged_in(request):
         return RedirectResponse("/", status_code=303)
-    return TEMPLATES.TemplateResponse(
-        request,
-        "login.html",
-        {"error": error},
-    )
+    return TEMPLATES.TemplateResponse(request, "login.html", {"error": None})
 
 
 @app.post("/login")
 def login_submit(request: Request, password: Annotated[str, Form()] = ""):
     expected = settings.memory_ui_password or ""
-    if expected and hmac.compare_digest(password, expected):
+    if expected and hmac.compare_digest(password.encode(), expected.encode()):
+        request.session.clear()
         request.session["auth"] = True
         return RedirectResponse("/", status_code=303)
+    time.sleep(1.0)  # slow down guessing
     return TEMPLATES.TemplateResponse(
-        request,
-        "login.html",
-        {"error": "That password was not accepted."},
-        status_code=401,
+        request, "login.html", {"error": "That password was not accepted."}, status_code=401
     )
 
 
@@ -315,73 +442,83 @@ def logout(request: Request):
 def ui_list(
     request: Request,
     db: Db,
+    _: None = Depends(require_ui),
     q: str = "",
     category: str = "",
-    _: None = Depends(require_ui),
+    tag: str = "",
+    page: int = Query(default=1, ge=1),
 ):
-    stmt = select(Memory).where(Memory.user_id == settings.default_user_id)
-    if category:
+    user_id = settings.default_user_id
+    stmt = select(Memory).where(Memory.user_id == user_id)
+    if category == "_none":
+        stmt = stmt.where(Memory.category.is_(None))
+    elif category:
         stmt = stmt.where(Memory.category == category)
-    if q:
+    if tag:
+        stmt = stmt.where(Memory.tags.any(tag.strip().lower()))
+    if q.strip():
         stmt = stmt.where(Memory.text.ilike(f"%{q.strip()}%"))
-    stmt = stmt.order_by(Memory.updated_at.desc())
-    memories = db.scalars(stmt).all()
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    memories = db.scalars(
+        stmt.order_by(Memory.updated_at.desc()).limit(UI_PAGE * page)
+    ).all()
+    counts = dict(
+        db.execute(
+            select(Memory.category, func.count()).where(Memory.user_id == user_id).group_by(Memory.category)
+        ).all()
+    )
+    cats = _cats(db)
     return TEMPLATES.TemplateResponse(
         request,
         "list.html",
         {
             "memories": memories,
-            "categories": _cats(db),
+            "categories": cats,
+            "labels": {c.slug: c.label for c in cats},
+            "counts": counts,
+            "all_count": sum(counts.values()),
             "q": q,
             "category": category,
+            "tag": tag,
+            "total": total,
+            "page": page,
+            "has_more": total > len(memories),
         },
     )
 
 
+def _form(request: Request, db: Session, memory: Memory | None, error: str | None = None, **extra):
+    ctx = {"memory": memory, "categories": _cats(db), "error": error}
+    ctx.update(extra)
+    return TEMPLATES.TemplateResponse(request, "form.html", ctx, status_code=400 if error else 200)
+
+
 @app.get("/new", response_class=HTMLResponse)
-def ui_new(request: Request, db: Db, _: None = Depends(require_ui)):
-    return TEMPLATES.TemplateResponse(
-        request,
-        "form.html",
-        {"memory": None, "categories": _cats(db), "error": None},
-    )
+def ui_new(request: Request, db: Db, _: None = Depends(require_ui), category: str = ""):
+    return _form(request, db, None, form_category=category)
 
 
 @app.post("/new")
 def ui_new_submit(
     request: Request,
     db: Db,
+    _: None = Depends(require_ui),
     text: Annotated[str, Form()] = "",
     category: Annotated[str, Form()] = "",
     tags: Annotated[str, Form()] = "",
-    _: None = Depends(require_ui),
 ):
     text = text.strip()
     if not text:
-        return TEMPLATES.TemplateResponse(
-            request,
-            "form.html",
-            {
-                "memory": None,
-                "categories": _cats(db),
-                "error": "Please write a memory first.",
-                "form_text": text,
-                "form_category": category,
-                "form_tags": tags,
-            },
-            status_code=400,
-        )
-    memory = Memory(
+        return _form(request, db, None, "Please write a memory first.",
+                     form_text=text, form_category=category, form_tags=tags)
+    _create_memory(
+        db,
         user_id=settings.default_user_id,
         text=text,
         category=_valid_category(db, category or None),
         tags=_parse_tags(tags),
         source="manual",
-        content_hash=content_hash(settings.default_user_id, text),
-        embedding=embed_text(text),
     )
-    db.add(memory)
-    db.commit()
     return RedirectResponse("/", status_code=303)
 
 
@@ -389,12 +526,8 @@ def ui_new_submit(
 def ui_edit(request: Request, memory_id: uuid.UUID, db: Db, _: None = Depends(require_ui)):
     memory = db.get(Memory, memory_id)
     if not memory:
-        raise HTTPException(status_code=404, detail="Memory not found")
-    return TEMPLATES.TemplateResponse(
-        request,
-        "form.html",
-        {"memory": memory, "categories": _cats(db), "error": None},
-    )
+        return RedirectResponse("/", status_code=303)
+    return _form(request, db, memory)
 
 
 @app.post("/m/{memory_id}")
@@ -402,29 +535,26 @@ def ui_edit_submit(
     request: Request,
     memory_id: uuid.UUID,
     db: Db,
+    _: None = Depends(require_ui),
     text: Annotated[str, Form()] = "",
     category: Annotated[str, Form()] = "",
     tags: Annotated[str, Form()] = "",
-    _: None = Depends(require_ui),
 ):
     memory = db.get(Memory, memory_id)
     if not memory:
-        raise HTTPException(status_code=404, detail="Memory not found")
+        return RedirectResponse("/", status_code=303)
     text = text.strip()
     if not text:
-        return TEMPLATES.TemplateResponse(
-            request,
-            "form.html",
-            {"memory": memory, "categories": _cats(db), "error": "Please write a memory first."},
-            status_code=400,
-        )
-    text_changed = text != memory.text
-    memory.text = text
+        return _form(request, db, memory, "Please write a memory first.")
+    if text != memory.text:
+        chash = content_hash(memory.user_id, text)
+        if _find_duplicate(db, memory.user_id, chash, exclude=memory.id):
+            return _form(request, db, memory, "An identical memory already exists.")
+        memory.text = text
+        memory.content_hash = chash
+        memory.embedding = try_embed(text)
     memory.category = _valid_category(db, category or None)
     memory.tags = _parse_tags(tags)
-    if text_changed:
-        memory.content_hash = content_hash(memory.user_id, memory.text)
-        memory.embedding = embed_text(memory.text)
     memory.updated_at = datetime.now(timezone.utc)
     db.commit()
     return RedirectResponse("/", status_code=303)
@@ -439,14 +569,57 @@ def ui_delete(memory_id: uuid.UUID, db: Db, _: None = Depends(require_ui)):
     return RedirectResponse("/", status_code=303)
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    if exc.status_code == status.HTTP_303_SEE_OTHER and exc.headers and exc.headers.get("Location"):
-        return RedirectResponse(exc.headers["Location"], status_code=303)
-    if request.url.path.startswith(("/login", "/", "/new", "/m")) and "text/html" in (
-        request.headers.get("accept") or ""
-    ):
-        # fall through to default JSON for API clients
-        if exc.status_code in (401, 403) and not request.url.path.startswith("/api"):
-            pass
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers)
+def _cats_page(request: Request, db: Session, error: str | None = None):
+    counts = dict(db.execute(select(Memory.category, func.count()).group_by(Memory.category)).all())
+    return TEMPLATES.TemplateResponse(
+        request,
+        "categories.html",
+        {"categories": _cats(db), "counts": counts, "error": error},
+        status_code=400 if error else 200,
+    )
+
+
+@app.get("/c", response_class=HTMLResponse)
+def ui_categories(request: Request, db: Db, _: None = Depends(require_ui)):
+    return _cats_page(request, db)
+
+
+@app.post("/c")
+def ui_category_add(request: Request, db: Db, _: None = Depends(require_ui),
+                    label: Annotated[str, Form()] = ""):
+    try:
+        _add_category(db, label, None, None)
+    except HTTPException as exc:
+        db.rollback()
+        return _cats_page(request, db, str(exc.detail))
+    return RedirectResponse("/c", status_code=303)
+
+
+@app.post("/c/{slug}")
+def ui_category_edit(request: Request, slug: str, db: Db, _: None = Depends(require_ui),
+                     label: Annotated[str, Form()] = "", move: Annotated[str, Form()] = ""):
+    cats = _cats(db)
+    idx = next((i for i, c in enumerate(cats) if c.slug == slug), None)
+    if idx is None:
+        return RedirectResponse("/c", status_code=303)
+    if move in ("up", "down"):
+        j = idx - 1 if move == "up" else idx + 1
+        if 0 <= j < len(cats):
+            cats[idx], cats[j] = cats[j], cats[idx]
+            for n, c in enumerate(cats):
+                c.sort_order = (n + 1) * 10
+    elif label.strip():
+        cats[idx].label = " ".join(label.split())[:128]
+    else:
+        return _cats_page(request, db, "A category needs a name.")
+    db.commit()
+    return RedirectResponse("/c", status_code=303)
+
+
+@app.post("/c/{slug}/delete")
+def ui_category_delete(slug: str, db: Db, _: None = Depends(require_ui)):
+    try:
+        _delete_category(db, slug)
+    except HTTPException:
+        db.rollback()
+    return RedirectResponse("/c", status_code=303)

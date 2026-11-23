@@ -63,3 +63,25 @@ button.primary, .button-link.primary { background: var(--accent); color: var(--a
 .logout button { min-height: 40px; background: none; border: 0; color: var(--muted); padding: 0 0.2rem; }
 .danger-form { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 button.danger { width: 100%; background: none; color: var(--danger); border: 1px solid var(--danger); }
+.topnav { display: flex; align-items: center; gap: 0.9rem; }
+.topnav a { color: var(--muted); text-decoration: none; min-height: 40px; display: inline-flex; align-items: center; }
+.chip .n, .n { font-size: 0.8em; opacity: 0.7; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: -0.4rem 0 1rem; }
+.filters .count { color: var(--muted); font-size: 0.85rem; }
+a.pill { color: inherit; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+.pill.on { background: var(--on); color: var(--accent-ink); }
+.card .meta { padding: 0 1rem 0.85rem; margin-top: -0.4rem; align-items: center; }
+.card-body .card-text { margin: 0; }
+.src { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+.more { width: 100%; margin-top: 1rem; }
+.row { display: flex; gap: 0.5rem; align-items: center; }
+.row input { flex: 1; min-width: 0; }
+.row .primary { width: auto; margin-top: 0; }
+.cats { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.7rem; }
+.cat { padding: 0.8rem; display: grid; gap: 0.5rem; }
+.cat .tools { justify-content: flex-end; }
+.cat .tools .n { margin-right: auto; color: var(--muted); }
+.cat form { margin: 0; }
+.quiet-btn { background: none; border: 1px solid var(--line); color: var(--ink); min-width: var(--tap); }
+.quiet-btn:disabled { opacity: 0.35; }
+.danger-text { color: var(--danger); }

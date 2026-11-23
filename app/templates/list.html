@@ -1,23 +1,37 @@
 {% extends "base.html" %}
 {% block title %}Memories{% endblock %}
+{% macro qs(q=q, category=category, tag=tag) -%}
+?{% if q %}q={{ q|urlencode }}&amp;{% endif %}{% if category %}category={{ category|urlencode }}&amp;{% endif %}{% if tag %}tag={{ tag|urlencode }}{% endif %}
+{%- endmacro %}
 {% block content %}
 <section class="toolbar">
-  <form class="search" method="get" action="/">
+  <form class="search" method="get" action="/" role="search">
     <label class="sr-only" for="q">Search</label>
-    <input id="q" name="q" type="search" value="{{ q }}" placeholder="Search memories" enterkeyhint="search">
+    <input id="q" name="q" type="search" value="{{ q }}" placeholder="Search memories" enterkeyhint="search" autocomplete="off">
     {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    {% if tag %}<input type="hidden" name="tag" value="{{ tag }}">{% endif %}
     <button type="submit" class="primary">Search</button>
   </form>
-  <a class="primary button-link" href="/new">Add memory</a>
+  <a class="primary button-link" href="/new{% if category and category != '_none' %}?category={{ category|urlencode }}{% endif %}">Add memory</a>
 </section>
 
 <nav class="chips" aria-label="Categories">
-  <a class="chip{% if not category %} is-on{% endif %}" href="/{% if q %}?q={{ q|urlencode }}{% endif %}">All</a>
+  <a class="chip{% if not category %} is-on{% endif %}" href="/{{ qs(category='') }}">All <span class="n">{{ all_count }}</span></a>
   {% for c in categories %}
-  <a class="chip{% if category == c.slug %} is-on{% endif %}"
-     href="/?category={{ c.slug }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">{{ c.label }}</a>
+  <a class="chip{% if category == c.slug %} is-on{% endif %}" href="/{{ qs(category=c.slug) }}">{{ c.label }}{% if counts.get(c.slug) %} <span class="n">{{ counts[c.slug] }}</span>{% endif %}</a>
   {% endfor %}
+  {% if counts.get(None) %}
+  <a class="chip{% if category == '_none' %} is-on{% endif %}" href="/{{ qs(category='_none') }}">Uncategorised <span class="n">{{ counts[None] }}</span></a>
+  {% endif %}
 </nav>
+
+{% if tag or q %}
+<p class="filters">
+  {% if tag %}<a class="pill on" href="/{{ qs(tag='') }}" aria-label="Remove tag filter {{ tag }}">#{{ tag }} ✕</a>{% endif %}
+  {% if q %}<a class="pill on" href="/{{ qs(q='') }}" aria-label="Clear search">“{{ q }}” ✕</a>{% endif %}
+  <span class="count">{{ total }} found</span>
+</p>
+{% endif %}
 
 {% if memories %}
 <ul class="cards">
@@ -25,15 +39,19 @@
   <li class="card">
     <a class="card-body" href="/m/{{ m.id }}">
       <p class="card-text">{{ m.text }}</p>
-      <p class="meta">
-        {% if m.category %}<span class="pill">{{ m.category }}</span>{% endif %}
-        {% for tag in m.tags %}<span class="pill faint">{{ tag }}</span>{% endfor %}
-      </p>
     </a>
+    <p class="meta">
+      {% if m.category %}<a class="pill" href="/{{ qs(category=m.category) }}">{{ labels.get(m.category, m.category) }}</a>{% endif %}
+      {% for t in m.tags %}<a class="pill faint" href="/{{ qs(tag=t) }}">#{{ t }}</a>{% endfor %}
+      <span class="src">{{ m.source }} · {{ m.updated_at.strftime('%b %-d') }}</span>
+    </p>
   </li>
   {% endfor %}
 </ul>
+{% if has_more %}
+<a class="button-link quiet more" href="/{{ qs() }}&amp;page={{ page + 1 }}">Show more</a>
+{% endif %}
 {% else %}
-<p class="empty">No memories{% if q or category %} match this filter{% endif %} yet.</p>
+<p class="empty">No memories{% if q or category or tag %} match this filter{% endif %} yet.</p>
 {% endif %}
 {% endblock %}

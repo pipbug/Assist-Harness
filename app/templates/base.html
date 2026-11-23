@@ -11,9 +11,12 @@
   <header class="top">
     <a class="brand" href="/">Memory</a>
     {% if request.session.get('auth') %}
-    <form method="post" action="/logout" class="logout">
-      <button type="submit">Log out</button>
-    </form>
+    <nav class="topnav">
+      <a href="/c">Categories</a>
+      <form method="post" action="/logout" class="logout">
+        <button type="submit">Log out</button>
+      </form>
+    </nav>
     {% endif %}
   </header>
   <main>
