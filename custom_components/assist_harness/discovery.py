@@ -104,7 +104,7 @@ class SmartDiscovery:
             label: Label name to filter by
             domain: Domain to filter by (e.g., 'sensor', 'light')
             state: State to filter by (e.g., 'on', 'off')
-            name_contains: Substring to search for in entity names
+            name_contains: Substring to search for in entity names, entity IDs, or aliases
             limit: Maximum number of entities to return
             device_class: Device class to filter by (e.g., 'temperature', 'motion')
                          Can be a single string or list of strings for OR logic
@@ -1062,6 +1062,7 @@ class SmartDiscovery:
                 "domain": state_obj.domain,
                 "state": state_obj.state,
                 "attributes": self._serialize_attributes(dict(state_obj.attributes)),
+                "aliases": self._get_entity_aliases(entity_entry),
                 "area": entity_context["area"],
                 "area_id": entity_context["area_id"],
                 "area_aliases": entity_context["area_aliases"],

@@ -29,6 +29,7 @@ from .const import (
     DEFAULT_ALLOWED_IPS,
 )
 from .discovery import EntityDiscovery
+from .discovery_format import format_aliases_suffix
 from .domain_registry import (
     validate_domain_action,
     get_supported_domains,
@@ -768,7 +769,7 @@ class MCPServer:
         tools = [
             {
                 "name": "discover_entities",
-                "description": "Find and list Home Assistant entities by criteria like area, floor, label, type, domain, device_class, or current state. Use this to discover what devices are available before trying to control them.",
+                "description": "Find and list Home Assistant entities by criteria like area, floor, label, type, domain, device_class, name, alias, or current state. Use this to discover what devices are available before trying to control them. Results include aliases when set.",
                 "inputSchema": {
                     "$schema": "http://json-schema.org/draft-07/schema#",
                     "type": "object",
@@ -799,7 +800,7 @@ class MCPServer:
                         },
                         "name_contains": {
                             "type": "string",
-                            "description": "Text that entity name should contain (case-insensitive)",
+                            "description": "Text that the entity name, entity ID, or an alias should contain (case-insensitive)",
                         },
                         "device_class": {
                             "oneOf": [
@@ -1228,7 +1229,7 @@ class MCPServer:
                         else ""
                     )
                     text_parts.append(
-                        f"  • {entity['entity_id']}: {entity['name']} - {entity['state']}{type_desc}{location_text}{labels}"
+                        f"  • {entity['entity_id']}: {entity['name']} - {entity['state']}{type_desc}{location_text}{format_aliases_suffix(entity)}{labels}"
                     )
 
             # Group related entities by category
@@ -1255,8 +1256,10 @@ class MCPServer:
                             if entity.get("labels")
                             else ""
                         )
+                        name = entity.get("name")
+                        name_text = f"{name} - " if name else ""
                         text_parts.append(
-                            f"    • {entity['entity_id']}: {entity['state']}{location_text}{labels}"
+                            f"    • {entity['entity_id']}: {name_text}{entity['state']}{location_text}{format_aliases_suffix(entity)}{labels}"
                         )
 
             return {"content": [{"type": "text", "text": "\n".join(text_parts)}]}
@@ -1272,7 +1275,7 @@ class MCPServer:
                 if entity.get("labels"):
                     detail_parts.append(f"Labels: {', '.join(entity['labels'])}")
                 text_parts.append(
-                    f"- {entity['entity_id']}: {entity['name']} ({', '.join(detail_parts)})"
+                    f"- {entity['entity_id']}: {entity['name']} ({', '.join(detail_parts)}){format_aliases_suffix(entity)}"
                 )
 
             return {"content": [{"type": "text", "text": "\n".join(text_parts)}]}
