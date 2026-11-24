@@ -1,13 +1,16 @@
-# Memory
+# Memory service
 
-Self-hosted long-term memory for Kira and her agents. Replaces Mem0 for Kestrel (Phase 2).
+Self-hosted long-term memory behind Assist Harness's `memory` tool (`recall_memory`, `save_memory`, and the
+background save of each finished turn). One small FastAPI app with Postgres + pgvector, OpenAI embeddings and
+fact extraction, and a portrait-first web UI for reading and editing memories, categories and tags.
 
-- API and mobile-first web UI, served together on `127.0.0.1:8890`
-- Web UI: on the same port; put it behind a reverse proxy (tailnet-only is recommended)
-- Stack and Postgres data: the compose project directory (bind mounts, no named volumes)
-- Secrets: `secrets/memory.env` in the compose project directory
+- API and web UI are served together on one port (`127.0.0.1:8890` in the example compose file).
+  Put the UI behind a reverse proxy; tailnet-only is recommended.
+- All data lives in bind mounts in the compose project directory (no named volumes).
+- Secrets go in `secrets/memory.env` there (see `memory.env.example`). The UI password is
+  `MEMORY_UI_PASSWORD`; API clients send `X-API-Key: <MEMORY_API_KEY>`.
 
-The UI password is `MEMORY_UI_PASSWORD` in that env file. API clients send `X-API-Key` (`MEMORY_API_KEY`).
+In Home Assistant, add the **Memory** tool on the Assist Harness system entry with this service's URL and API key.
 
 ## API
 
@@ -20,14 +23,15 @@ The UI password is `MEMORY_UI_PASSWORD` in that env file. API clients send `X-AP
 | GET, POST | `/categories` | `{label, slug?, sort_order?}` |
 | PUT, DELETE | `/categories/{slug}` | deleting a category leaves its memories uncategorised |
 
-`source` is one of `voice`, `manual`, `winston`, `claude`, `import` (or `metadata.source`, as Mem0 clients send it).
-Results also carry `memory` (same as `text`), so Mem0 clients can read them unchanged.
+`source` is one of `voice`, `manual`, `winston`, `claude`, `import`.
+For older Mem0-style clients the API also accepts `metadata.source`, `filters` and `limit`, and results carry
+`memory` (same as `text`).
 
-## Extraction and dedup (Phase 1)
+## Extraction and dedup
 
-- `{messages}` turns go to `gpt-5.4-nano` with the policy in
-  `config/extraction_policy.txt` in the compose project directory (mounted read-only, re-read on every request,
-  so edits apply without a rebuild). The model also picks a category from the current list.
+- `{messages}` turns go to `gpt-5.4-nano` with the policy in `config/extraction_policy.txt` in the compose
+  project directory (mounted read-only and re-read on every request, so edits apply without a rebuild; a short
+  built-in policy is used if the file is missing). The model also picks a category from the current list.
 - Every API write (extracted or verbatim) is checked against the user's existing memories: an exact duplicate
   (`content_hash`) or cosine similarity >= 0.99 is a NOOP. Neighbours >= 0.70 go to the LLM, which picks ADD,
   UPDATE (rewrite the existing row with merged or corrected text) or NOOP. The old wording is kept in
@@ -42,14 +46,22 @@ Tunables (env): `OPENAI_LLM_MODEL`, `OPENAI_REASONING_EFFORT`, `DEDUP_NOOP`, `DE
 
 `/` lists memories (search, category chips, tag links), `/new` adds, `/m/{id}` edits or deletes, `/c` manages categories.
 
-## Build and deploy
+## Deploy
+
+Copy `compose.example.yaml` to a stack directory as `compose.yaml`, set `build:` to this folder, create
+`secrets/memory.env` from `memory.env.example` (mode 600) and, optionally, `config/extraction_policy.txt`. Then:
 
 ```sh
-cd /path/to/memory-stack
+docker compose build memory-api && docker compose up -d
+```
+
+Rebuild and recreate only the API after a code change:
+
+```sh
 docker compose build memory-api && docker compose up -d --no-build --no-deps memory-api
 ```
 
-## Roadmap
+## Possible next step
 
-- Phase 2: point Assist Harness `tools/mem0_memory.py` here
-- Phase 3: per-agent keys and a non-Tailscale API path for Winston and Claude
+Per-agent API keys (the `agent_id` column and the `winston`/`claude` sources are already there) and an
+authenticated path for agents that can't reach the tailnet.

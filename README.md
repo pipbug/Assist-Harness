@@ -150,6 +150,13 @@ The control tools only act on entities exposed to Assist.
 1. **Settings → Voice assistants → Expose**
 2. Expose the entities this profile should control
 
+## Memory service
+
+`memory-service/` holds the self-hosted service behind the `memory` tool: a FastAPI app with Postgres and
+pgvector that stores memories, extracts facts from finished turns, merges near-duplicates, and has a
+phone-friendly web UI for editing memories, categories and tags. It runs outside Home Assistant (Docker); see
+[memory-service/README.md](memory-service/README.md). Point the Memory tool's URL and API key at it.
+
 ## Development
 
 ```bash
