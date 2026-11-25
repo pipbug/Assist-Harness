@@ -46,6 +46,10 @@ Tunables (env): `OPENAI_LLM_MODEL`, `OPENAI_REASONING_EFFORT`, `DEDUP_NOOP`, `DE
 
 `/` lists memories (search, category chips, tag links), `/new` adds, `/m/{id}` edits or deletes, `/c` manages categories.
 
+`/graph` draws memories as a network: solid lines join similar memories (embedding cosine, adjustable with a slider),
+dashed lines lead to categories and tags. Tap a node for its details. It shows up to the 300 most recent memories and
+needs no external scripts. Facts about one person all read alike (unrelated pairs score ~0.46), so links start at 0.55.
+
 ## Deploy
 
 Copy `compose.example.yaml` to a stack directory as `compose.yaml`, set `build:` to this folder, create
