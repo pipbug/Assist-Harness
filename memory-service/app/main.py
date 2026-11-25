@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import re
 import time
@@ -21,12 +22,17 @@ from starlette.middleware.sessions import SessionMiddleware
 from .db import Category, Memory, SessionLocal, init_db
 from .embeddings import content_hash, embed_text, try_embed
 from .extract import extract_facts, ingest, start_backfill_thread
+from .graph import build_graph
 from .settings import settings
 
 if not settings.session_secret or len(settings.session_secret) < 32:
     raise RuntimeError("SESSION_SECRET must be set (32+ chars)")
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+# cache-buster for /static, so a phone never mixes old CSS/JS with new pages
+TEMPLATES.env.globals["asset_v"] = hashlib.sha256(
+    b"".join(p.read_bytes() for p in sorted((Path(__file__).parent / "static").iterdir()) if p.is_file())
+).hexdigest()[:10]
 TAG_SPLIT = re.compile(r"[,\n]+")
 SLUG_STRIP = re.compile(r"[^a-z0-9]+")
 SOURCES = {"voice", "manual", "winston", "claude", "import"}
@@ -618,6 +624,20 @@ def ui_delete(memory_id: uuid.UUID, db: Db, _: None = Depends(require_ui)):
         db.delete(memory)
         db.commit()
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/graph", response_class=HTMLResponse)
+def ui_graph(request: Request, db: Db, _: None = Depends(require_ui)):
+    return TEMPLATES.TemplateResponse(
+        request, "graph.html", {"category_labels": {c.slug: c.label for c in _cats(db)}}
+    )
+
+
+@app.get("/graph/data")
+def ui_graph_data(request: Request, db: Db):
+    if not _ui_logged_in(request):  # fetched by script: say 401 instead of redirecting to the login page
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Log in first")
+    return JSONResponse(build_graph(db, settings.default_user_id), headers={"Cache-Control": "no-store"})
 
 
 def _cats_page(request: Request, db: Session, error: str | None = None):

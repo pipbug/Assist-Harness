@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Graph · Memory{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<section class="graph-controls" aria-label="Graph controls">
+  <label class="sr-only" for="g-q">Find in graph</label>
+  <input id="g-q" type="search" placeholder="Find in graph" autocomplete="off">
+  <div class="g-row">
+    <label class="toggle"><input type="checkbox" id="g-cats" checked><span class="key cat" aria-hidden="true"></span>Categories</label>
+    <label class="toggle"><input type="checkbox" id="g-tags" checked><span class="key tag" aria-hidden="true"></span>Tags</label>
+    <span class="g-key"><span class="key mem" aria-hidden="true"></span>Memory</span>
+  </div>
+  <label class="g-slider" for="g-sim"><span>Similarity</span>
+    <input id="g-sim" type="range" min="0.45" max="0.85" step="0.01" value="0.55">
+    <output id="g-sim-out" for="g-sim">0.55</output></label>
+</section>
+
+<div class="graph-wrap">
+  <svg id="graph" role="group" aria-label="Network graph of memories. Tab through nodes, Enter selects."></svg>
+  <div class="g-zoom">
+    <button type="button" id="g-in" aria-label="Zoom in">+</button>
+    <button type="button" id="g-out" aria-label="Zoom out">−</button>
+    <button type="button" id="g-fit" aria-label="Fit to screen">⤢</button>
+  </div>
+  <p id="g-msg" class="g-msg" role="status">Loading…</p>
+</div>
+<p id="g-note" class="g-note"></p>
+<section id="g-panel" class="panel g-panel" aria-live="polite" hidden></section>
+<details class="history" id="g-table" hidden>
+  <summary>Links as a list</summary>
+  <ul id="g-links"></ul>
+</details>
+<noscript><p class="empty">The graph needs JavaScript. The <a href="/">list</a> shows every memory.</p></noscript>
+
+<script id="g-cats-data" type="application/json">{{ category_labels | tojson }}</script>
+<script src="/static/graph.js?v={{ asset_v }}" defer></script>
+{% endblock %}

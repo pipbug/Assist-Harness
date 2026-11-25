@@ -30,6 +30,7 @@
   </form>
   {% if memory %}
   <p class="meta-line">From {{ memory.source }}{% if memory.agent_id %} ({{ memory.agent_id }}){% endif %} · added {{ memory.created_at.strftime('%b %-d %Y') }}{% if memory.updated_at.strftime('%Y%m%d%H%M') != memory.created_at.strftime('%Y%m%d%H%M') %} · changed {{ memory.updated_at.strftime('%b %-d %Y') }}{% endif %}</p>
+  <p class="meta-line"><a href="/graph?focus={{ memory.id }}">Show in graph</a></p>
   {% set history = (memory.metadata_json or {}).get('history') or [] %}
   {% if history %}
   <details class="history">
