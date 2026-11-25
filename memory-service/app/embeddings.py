@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+import hashlib
+import logging
+
+import httpx
+
+from .settings import settings
+
+EMBED_URL = "https://api.openai.com/v1/embeddings"
+log = logging.getLogger("memory.embeddings")
+
+
+def content_hash(user_id: str, text: str) -> str:
+    normalised = " ".join((text or "").split()).strip().lower().rstrip(".!")
+    payload = f"{user_id}\n{normalised}".encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def embed_text(text: str) -> list[float]:
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set")
+    resp = httpx.post(
+        EMBED_URL,
+        headers={
+            "Authorization": f"Bearer {settings.openai_api_key}",
+            "Content-Type": "application/json",
+        },
+        json={"model": settings.openai_embed_model, "input": text},
+        timeout=30.0,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data["data"][0]["embedding"]
+
+
+def try_embed(text: str) -> list[float] | None:
+    """Embed, but never block a write: on failure, store NULL and let it be backfilled later."""
+    try:
+        return embed_text(text)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("embedding failed, saving without vector: %s", type(exc).__name__)
+        return None
+
+
+def clean_fact(text: str) -> str:
+    """Collapse whitespace and drop a trailing full stop, so stored facts read consistently."""
+    out = " ".join((text or "").split())
+    return out[:-1] if out.endswith(".") and not out.endswith("..") else out

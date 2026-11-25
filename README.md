@@ -11,7 +11,7 @@ Optional tools are modules. Add one by dropping a file into `custom_components/a
 - MCP tools for entity discovery, state, history, scripts, and automations, so a large home does not dump thousands of entities into the prompt
 - Smart Entity Index: a pre-generated system structure index (~400-800 tokens) for context-aware queries
 - Several profiles, each with its own model, prompts, and choice of tools
-- Optional tools you can add and remove while Home Assistant is running: Brave, DuckDuckGo, SearXNG, Read URL, Mem0, and external MCP servers
+- Optional tools you can add and remove while Home Assistant is running: Brave, DuckDuckGo, SearXNG, Read URL, memory, and external MCP servers
 - More than one instance of the same tool when that is useful (two SearXNG servers, several external MCP servers), with a name prefix so their tools do not collide
 - Per profile, choose which enabled tools that profile's agent sees. Built-in Home Assistant tools stay on
 - Thinking control, multilingual prompts, and voice-oriented response cleanup
@@ -46,7 +46,7 @@ The default MCP port is **8091**, so Assist Harness can run next to an existing 
 ## Configuration
 
 1. **Settings → Devices & services → Add integration → Assist Harness**
-2. If config entries for the old `mcp_assist` domain exist and Assist Harness has none yet, the first step offers to import them. Import copies the system entry and every profile (prompts, model, keys, Mem0). It does not modify or delete the MCP Assist entries.
+2. If config entries for the old `mcp_assist` domain exist and Assist Harness has none yet, the first step offers to import them. Import copies the system entry and every profile (prompts, model, keys, memory settings). It does not modify or delete the MCP Assist entries.
 3. Create a profile: name, server type, URL or API key, model, prompts, and advanced settings.
 4. Shared server settings (port, allowed IPs, entity index) apply to every profile. Changing the port needs a restart. Tools do not.
 
@@ -66,12 +66,12 @@ Open a profile and choose **Tools**. The form has one section per tool, titled w
 | `duckduckgo` | `search` via DuckDuckGo | none |
 | `searxng` | `search` via your SearXNG server | URL. JSON output must be enabled (`search.formats` includes `json`) |
 | `read_url` | `read_url` fetches a page and returns text. It is its own tool, not tied to search | none |
-| `mem0_memory` | `recall_memory` and `save_memory`, plus a background save of each finished turn | enable, URL, API key, user id |
+| `memory` | `recall_memory` and `save_memory`, plus a background save of each finished turn | enable, URL, API key, user id |
 | `external_mcp` | Proxies another MCP server's tools | URL, transport (`streamable_http` or `sse`), optional bearer token, optional extra headers, and the instance prefix |
 
 An external server that is down is skipped: its tools are left off `tools/list` and the rest of the server keeps working. The next `tools/list` tries to reconnect.
 
-Mem0 talks to a self-hosted server (`X-API-Key`, `/memories`, `/search`) or to the hosted platform when the URL is `https://api.mem0.ai` (`Authorization: Token`, `/v3/memories/...`). The turn save runs in the background and is skipped when `save_memory` already ran in that turn. A Mem0 outage logs a warning and does not break the reply.
+Memory talks to the self-hosted memory service (default `http://127.0.0.1:8890`; `X-API-Key`, `POST /search`, `POST /memories`). `save_memory` stores the fact as written (the service merges near-duplicates); the background turn save sends the turn's messages for fact extraction, and is skipped when `save_memory` already ran in that turn. An outage logs a warning and does not break the reply.
 
 ### Upgrading an Assist Harness entry
 
@@ -79,10 +79,11 @@ Assist Harness **0.21.3** stores tools as config subentries (config entry versio
 
 - `search_provider: brave`, `duckduckgo`, or `searxng` becomes that search tool plus `read_url`. An old `enable_custom_tools: true` with no provider becomes Brave plus `read_url`. `none` adds neither.
 - The Brave API key and SearXNG URL move onto those tools.
-- Per-profile `mem0_enabled`, `mem0_url`, `mem0_api_key`, and `mem0_user_id` become one Mem0 subentry on the system entry with the same values, including a disabled switch.
+- Per-profile `mem0_enabled`, `mem0_url`, `mem0_api_key`, and `mem0_user_id` (from the Mem0 era) become one `memory` subentry on the system entry with `memory_*` keys and the same values, including a disabled switch. The retired Mem0 address `http://127.0.0.1:8888` becomes `http://127.0.0.1:8890`.
+- Version 3.3 replaces an existing `mem0_memory` subentry with a `memory` one the same way, and keeps it disabled for profiles that had disabled it.
 - Version 2 tool lists (the `tools` option) are moved into those same subentries.
 
-After migration, search names stay `search` and `read_url`, and Mem0 names stay `recall_memory` and `save_memory`.
+After migration, search names stay `search` and `read_url`, and memory names stay `recall_memory` and `save_memory`.
 
 ## Writing a tool
 
@@ -148,6 +149,13 @@ The control tools only act on entities exposed to Assist.
 
 1. **Settings → Voice assistants → Expose**
 2. Expose the entities this profile should control
+
+## Memory service
+
+`memory-service/` holds the self-hosted service behind the `memory` tool: a FastAPI app with Postgres and
+pgvector that stores memories, extracts facts from finished turns, merges near-duplicates, and has a
+phone-friendly web UI for editing memories, categories and tags. It runs outside Home Assistant (Docker); see
+[memory-service/README.md](memory-service/README.md). Point the Memory tool's URL and API key at it.
 
 ## Development
 

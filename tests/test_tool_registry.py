@@ -67,15 +67,15 @@ def test_registry_discovers_builtin_modules():
         "duckduckgo",
         "searxng",
         "read_url",
-        "mem0_memory",
+        "memory",
         "external_mcp",
     }
-    assert found["mem0_memory"].shared is False
+    assert found["memory"].shared is False
     assert found["searxng"].allow_multiple is True
     assert found["external_mcp"].allow_multiple is True
     assert "api_key" in found["brave"].secrets
     assert "bearer_token" in found["external_mcp"].secrets
-    assert "mem0_api_key" in found["mem0_memory"].secrets
+    assert "memory_api_key" in found["memory"].secrets
 
 
 def test_drop_in_module_is_discovered():
@@ -261,7 +261,7 @@ async def test_profile_tool_filter_defaults_to_all(hass):
     assert system.entry_id
 
 
-def test_legacy_search_and_mem0_migration():
+def test_legacy_search_and_memory_migration():
     data, options = migrate_mapping(
         {
             "mcp_port": 8090,
@@ -298,7 +298,7 @@ def test_legacy_search_and_mem0_migration():
     _, legacy_flag = migrate_mapping({"enable_custom_tools": True}, {}, convert_search=True)
     assert {tool["type"] for tool in legacy_flag["tools"]} == {"brave", "read_url"}
 
-    _, mem0_options = migrate_mapping(
+    _, memory_options = migrate_mapping(
         {},
         {
             "mem0_enabled": True,
@@ -309,16 +309,17 @@ def test_legacy_search_and_mem0_migration():
         },
         convert_search=False,
     )
-    assert "mem0_enabled" not in mem0_options
-    assert mem0_options["system_prompt"] == "be kind"
-    mem0 = mem0_options["tools"][0]
-    assert mem0["type"] == "mem0_memory"
-    assert mem0["prefix"] == ""
-    assert mem0["config"] == {
-        "mem0_enabled": True,
-        "mem0_url": "https://api.mem0.ai",
-        "mem0_api_key": "tok",
-        "mem0_user_id": "kira",
+    assert "mem0_enabled" not in memory_options
+    assert memory_options["system_prompt"] == "be kind"
+    memory = memory_options["tools"][0]
+    assert memory["type"] == "memory"
+    assert memory["instance_id"] == "memory"
+    assert memory["prefix"] == ""
+    assert memory["config"] == {
+        "memory_enabled": True,
+        "memory_url": "https://api.mem0.ai",
+        "memory_api_key": "tok",
+        "memory_user_id": "kira",
     }
 
 
@@ -345,11 +346,12 @@ async def test_config_entry_version_migration(hass):
     assert "tools" not in system.options
     assert "tools" not in profile.options
     by_type = {sub.subentry_type: sub for sub in system.subentries.values()}
-    assert set(by_type) == {"duckduckgo", "read_url", "mem0_memory"}
-    mem0 = by_type["mem0_memory"].data
-    assert mem0["mem0_enabled"] is False
-    assert mem0["mem0_url"] == "http://127.0.0.1:8888"
-    assert mem0["mem0_user_id"] == "kira"
+    assert set(by_type) == {"duckduckgo", "read_url", "memory"}
+    memory = by_type["memory"].data
+    assert memory["memory_enabled"] is False
+    # the retired Mem0 server's address moves to the memory service
+    assert memory["memory_url"] == "http://127.0.0.1:8890"
+    assert memory["memory_user_id"] == "kira"
 
     registry = get_registry(hass)
     await registry.async_reload()
@@ -427,12 +429,12 @@ async def test_mcp_assist_import_copies_entries_and_leaves_originals(hass, monke
     assert new_system.data["mcp_port"] == 8091
     assert new_system.data["allowed_ips"] == "192.168.1.0/24"
     by_type = {sub.subentry_type: sub for sub in new_system.subentries.values()}
-    assert set(by_type) == {"brave", "read_url", "mem0_memory"}
+    assert set(by_type) == {"brave", "read_url", "memory"}
     assert by_type["brave"].data["api_key"] == "abc"
-    assert by_type["mem0_memory"].data["mem0_url"] == "https://api.mem0.ai"
-    assert by_type["mem0_memory"].data["mem0_api_key"] == "tok"
-    assert by_type["mem0_memory"].data["mem0_enabled"] is True
-    assert by_type["mem0_memory"].data["mem0_user_id"] == "kira"
+    assert by_type["memory"].data["memory_url"] == "https://api.mem0.ai"
+    assert by_type["memory"].data["memory_api_key"] == "tok"
+    assert by_type["memory"].data["memory_enabled"] is True
+    assert by_type["memory"].data["memory_user_id"] == "kira"
 
     new_profile = hass.config_entries.async_entry_for_domain_unique_id(
         DOMAIN, "assist_harness_ollama_kira"
@@ -618,3 +620,173 @@ async def test_external_mcp_proxies_and_omits_when_down(hass, monkeypatch):
     assert BUILTIN in listed
     await registry.async_teardown_all()
     await session.close()
+
+
+async def test_v3_mem0_subentry_renamed_to_memory(hass):
+    """3.2 -> 3.3: the installed mem0_memory subentry becomes a memory subentry."""
+    from types import MappingProxyType
+
+    from homeassistant.config_entries import ConfigSubentryData
+
+    system = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=SYSTEM_ENTRY_UNIQUE_ID,
+        title="Shared MCP Server Settings",
+        version=3,
+        minor_version=2,
+        data={"mcp_port": 8091},
+        subentries_data=[
+            ConfigSubentryData(
+                data=MappingProxyType(
+                    {
+                        "prefix": "",
+                        "mem0_enabled": True,
+                        "mem0_url": "http://127.0.0.1:8888",
+                        "mem0_api_key": "old-key",
+                        "mem0_user_id": "kira",
+                    }
+                ),
+                subentry_id="SUBMEM0",
+                subentry_type="mem0_memory",
+                title="Mem0 memory",
+                unique_id="mem0_memory",
+            ),
+            ConfigSubentryData(
+                data=MappingProxyType({"prefix": ""}),
+                subentry_id="SUBREAD",
+                subentry_type="read_url",
+                title="Read URL",
+                unique_id="read_url",
+            ),
+        ],
+    )
+    profile = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="assist_harness_openai_kestrel",
+        title="OpenAI - Kestrel",
+        version=3,
+        minor_version=2,
+        data={"profile_name": "Kestrel"},
+        options={"disabled_tools": ["SUBMEM0", "SUBREAD"]},
+    )
+    system.add_to_hass(hass)
+    profile.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, profile)
+    assert await async_migrate_entry(hass, system)
+    assert system.minor_version == 3
+    assert profile.minor_version == 3
+
+    by_type = {sub.subentry_type: sub for sub in system.subentries.values()}
+    assert set(by_type) == {"memory", "read_url"}
+    memory = by_type["memory"]
+    assert memory.title == "Memory"
+    assert memory.unique_id == "memory"
+    assert dict(memory.data) == {
+        "prefix": "",
+        "memory_enabled": True,
+        "memory_url": "http://127.0.0.1:8890",
+        "memory_api_key": "old-key",
+        "memory_user_id": "kira",
+    }
+    assert profile.options["disabled_tools"] == [memory.subentry_id, "SUBREAD"]
+
+    # running again changes nothing
+    assert await async_migrate_entry(hass, system)
+    assert {sub.subentry_type for sub in system.subentries.values()} == {"memory", "read_url"}
+
+
+@pytest.mark.enable_socket
+async def test_memory_tool_talks_to_memory_service(hass, monkeypatch):
+    """recall_memory, save_memory and the turn save send what the memory service expects."""
+    import asyncio
+    import socket
+
+    import aiohttp
+    import pytest_socket
+
+    from custom_components.assist_harness.tools import memory as memory_tool
+
+    pytest_socket.enable_socket()
+    pytest_socket.socket_allow_hosts(["127.0.0.1", "::1"])
+    seen: list[tuple[str, dict, str]] = []
+
+    async def _search(request):
+        seen.append(("/search", await request.json(), request.headers.get("X-API-Key", "")))
+        return web.json_response(
+            {"results": [{"id": "1", "text": "Kira's sister is called Maren", "score": 0.6}]}
+        )
+
+    async def _memories(request):
+        seen.append(("/memories", await request.json(), request.headers.get("X-API-Key", "")))
+        return web.json_response({"results": []})
+
+    app = web.Application()
+    app.router.add_post("/search", _search)
+    app.router.add_post("/memories", _memories)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    url = f"http://127.0.0.1:{site._server.sockets[0].getsockname()[1]}"
+
+    class _IpResolver(aiohttp.abc.AbstractResolver):
+        async def resolve(self, host, port=0, family=socket.AF_INET):
+            return [{"hostname": host, "host": host, "port": port, "family": family,
+                     "proto": 0, "flags": socket.AI_NUMERICHOST}]
+
+        async def close(self):
+            return None
+
+    session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(resolver=_IpResolver()))
+    monkeypatch.setattr(memory_tool, "async_get_clientsession", lambda _hass: session)
+    try:
+        settings = memory_tool.settings_from_config(
+            {"memory_enabled": True, "memory_url": url + "/", "memory_api_key": "k1", "memory_user_id": "kira"}
+        )
+        assert settings == {"url": url, "api_key": "k1", "user_id": "kira"}
+        assert memory_tool.settings_from_config({"memory_enabled": False}) is None
+
+        tool = memory_tool.MemoryTool(hass)
+        recalled = await tool.handle_call("recall_memory", {"query": "sister"}, settings)
+        assert recalled["content"][0]["text"] == "- Kira's sister is called Maren"
+        saved = await tool.handle_call("save_memory", {"fact": "Kira's cat is called Pixel"}, settings)
+        assert saved["content"][0]["text"] == "Saved to memory."
+        await memory_tool._save_turn(hass, settings, "Good evening", "Good evening, mam.")
+        for _ in range(50):
+            if len(seen) >= 3:
+                break
+            await asyncio.sleep(0.02)
+
+        by_path = {}
+        for path, body, key in seen:
+            assert key == "k1"
+            by_path.setdefault(path, []).append(body)
+        assert by_path["/search"] == [{"query": "sister", "user_id": "kira", "top_k": 5}]
+        bodies = by_path["/memories"]
+        assert {"text": "Kira's cat is called Pixel", "user_id": "kira", "source": "voice"} in bodies
+        turn = next(body for body in bodies if "messages" in body)
+        assert turn["source"] == "voice" and turn["user_id"] == "kira"
+        assert [m["role"] for m in turn["messages"]] == ["user", "assistant"]
+    finally:
+        await session.close()
+        await runner.cleanup()
+
+
+def test_upgrade_legacy_memory_config():
+    from custom_components.assist_harness.tools.memory import upgrade_legacy_config, upgrade_tool_record
+
+    assert upgrade_legacy_config({"prefix": "", "mem0_url": "http://127.0.0.1:8888/", "mem0_enabled": True}) == {
+        "prefix": "",
+        "memory_url": "http://127.0.0.1:8890",
+        "memory_enabled": True,
+    }
+    # an explicit non-default URL is kept; new keys win over legacy ones
+    assert upgrade_legacy_config({"mem0_url": "http://10.0.0.5:9000", "memory_user_id": "a", "mem0_user_id": "b"}) == {
+        "memory_url": "http://10.0.0.5:9000",
+        "memory_user_id": "a",
+    }
+    record = upgrade_tool_record({"instance_id": "mem0_memory", "type": "mem0_memory", "config": {"mem0_api_key": "t"}})
+    assert record["type"] == "memory" and record["instance_id"] == "memory"
+    assert record["config"]["memory_api_key"] == "t"
+    assert upgrade_tool_record({"type": "brave", "config": {}}) == {"type": "brave", "config": {}}

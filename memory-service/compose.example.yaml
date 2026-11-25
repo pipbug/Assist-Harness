@@ -1,0 +1,47 @@
+# Memory service for Assist Harness: API + web UI on 127.0.0.1:8890 only.
+# Copy to your stack directory as compose.yaml. Secrets: ./secrets/memory.env (mode 600, see memory.env.example).
+# All persistent data is under the stack directory (no named volumes).
+name: memory
+services:
+  memory-api:
+    build: /path/to/Assist-Harness/memory-service
+    image: local/memory:latest
+    container_name: memory-api
+    env_file:
+      - ./secrets/memory.env
+    environment:
+      - POSTGRES_HOST=memory-postgres
+      - POSTGRES_PORT=5432
+    ports:
+      - "127.0.0.1:8890:8000"
+    volumes:
+      # optional extraction policy, editable without a rebuild
+      - ./config/extraction_policy.txt:/config/extraction_policy.txt:ro
+    depends_on:
+      memory-postgres:
+        condition: service_healthy
+    networks: [memory]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    restart: unless-stopped
+  memory-postgres:
+    image: pgvector/pgvector:0.8.7-pg17
+    container_name: memory-postgres
+    env_file:
+      - ./secrets/memory.env
+    shm_size: "128mb"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks: [memory]
+    restart: unless-stopped
+networks:
+  memory:

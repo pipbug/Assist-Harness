@@ -638,7 +638,7 @@ class AssistHarnessConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Assist Harness."""
 
     VERSION = 3
-    MINOR_VERSION = 2
+    MINOR_VERSION = 3
 
     def __init__(self) -> None:
         """Initialize."""

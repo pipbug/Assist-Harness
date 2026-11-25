@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Log in · Memory{% endblock %}
+{% block content %}
+<section class="panel login">
+  <h1>Log in</h1>
+  <p class="lede">Enter the UI password to manage memories.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/login">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    <button type="submit" class="primary">Continue</button>
+  </form>
+</section>
+{% endblock %}
