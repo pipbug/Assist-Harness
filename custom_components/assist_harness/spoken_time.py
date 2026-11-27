@@ -10,7 +10,8 @@ This module has no Home Assistant imports so it can be unit tested alone.
 
 from __future__ import annotations
 
-from datetime import date
+import re
+from datetime import date, datetime
 
 _HOURS = (
     "twelve",
@@ -111,3 +112,74 @@ def format_spoken_date(day: date) -> str:
     else:
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{day.strftime('%A %B')} {n}{suffix} {day.year}"
+
+
+_DAY_PARTS = (" in the morning", " in the afternoon", " in the evening")
+
+# Leading and trailing words that do not change a question's meaning
+_LEAD = re.compile(
+    r"^(?:(?:hey|hi|ok|okay|oh)\s+)?(?:kestrel\s+)?"
+    r"(?:(?:please|excuse me|sorry)\s+)?"
+    r"(?:(?:can|could|would|will) you (?:please )?tell me\s+|tell me\s+"
+    r"|do you know\s+|(?:do )?you know\s+)?"
+)
+_TRAIL = re.compile(
+    r"(?:\s+(?:please|kestrel|miss|then|now|right now|at the moment|today|again))*$"
+)
+
+_TIME_QUESTIONS = re.compile(
+    r"(?:what(?: is|s|'s)? (?:the )?time(?: is it| it is)?"
+    r"|what time(?: is|s|'s) it"
+    r"|what's the time|whats the time"
+    r"|the time"
+    r"|(?:have|got) you got the time|have you the time|do you have the time"
+    r"|got the time|time check)"
+)
+_DATE_QUESTIONS = re.compile(
+    r"(?:what(?: is|s|'s)? (?:the |today's |todays )?date(?: is it| it is)?"
+    r"|what date(?: is|s|'s) it"
+    r"|what day(?: of the week)?(?: is|s|'s) (?:it|today)"
+    r"|what(?: is|s|'s) today"
+    r"|(?:the |today's |todays )date"
+    r"|which day is it)"
+)
+
+
+def _candidates(text: str) -> tuple[str, ...]:
+    """The question with fillers removed, with and without trailing fillers."""
+    text = text.lower().replace("\u2019", "'")
+    text = re.sub(r"[^a-z' ]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    text = _LEAD.sub("", text, count=1).strip()
+    return (text, _TRAIL.sub("", text).strip())
+
+
+def classify_clock_question(text: str) -> str | None:
+    """Return "time" or "date" for a plain time or date question, else None.
+
+    Only whole-utterance matches count, so anything with more in it, such
+    as a device, a place ("what time is it in Tokyo") or an event ("what
+    time is sunset"), is left to the model.
+    """
+    for candidate in _candidates(text):
+        if not candidate:
+            continue
+        if _TIME_QUESTIONS.fullmatch(candidate):
+            return "time"
+        if _DATE_QUESTIONS.fullmatch(candidate):
+            return "date"
+    return None
+
+
+def clock_answer(kind: str, now: datetime) -> str:
+    """Kestrel's direct answer, such as "It's five to one." """
+    if kind == "time":
+        spoken = format_spoken_time(now.hour, now.minute)
+        for part in _DAY_PARTS:
+            if spoken.endswith(part):
+                spoken = spoken[: -len(part)]
+                break
+        return f"It's {spoken}."
+    if kind == "date":
+        return f"It's {format_spoken_date(now)}."
+    raise ValueError(f"unknown clock question kind {kind!r}")

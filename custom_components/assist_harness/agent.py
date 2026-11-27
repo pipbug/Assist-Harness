@@ -105,7 +105,12 @@ from .const import (
     MIN_REASONING_COMPLETION_TOKENS,
 )
 from .conversation_history import ConversationHistory
-from .spoken_time import format_spoken_date, format_spoken_time
+from .spoken_time import (
+    classify_clock_question,
+    clock_answer,
+    format_spoken_date,
+    format_spoken_time,
+)
 from .trailing_offer import is_action_tool, strip_trailing_offer
 from .localization import get_spoken_symbols
 from .tools import memory  # [kestrel]
@@ -842,6 +847,16 @@ class MCPAssistConversationEntity(ConversationEntity):
             # server-side tools and holds conversation state itself
             if self.server_type == SERVER_TYPE_HERMES:
                 return await self._handle_hermes_message(user_input, conversation_id)
+
+            # Small models misread the clock, so plain time and date questions
+            # get a fixed answer from the harness instead of the model
+            clock_kind = classify_clock_question(user_input.text)
+            if clock_kind:
+                answer = clock_answer(clock_kind, dt_util.now())
+                _LOGGER.info("🕰️ Answered %s question directly: %s", clock_kind, answer)
+                return await self._build_response_result(
+                    answer, user_input, conversation_id
+                )
 
             # Get conversation history
             history = self.history.get_history(conversation_id)

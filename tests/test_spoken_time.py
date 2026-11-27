@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -104,3 +104,118 @@ def test_rejects_invalid_time(hour, minute):
 )
 def test_spoken_date(day, expected):
     assert format_spoken_date(day) == expected
+
+
+# --- Plain time and date questions answered without the model ---
+
+classify_clock_question = _MOD.classify_clock_question
+clock_answer = _MOD.clock_answer
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "What time is it?",
+        "what time is it",
+        "What's the time?",
+        "What’s the time?",
+        "whats the time",
+        "What is the time?",
+        "What time's it?",
+        "Kestrel, what time is it?",
+        "Hey Kestrel, what's the time please?",
+        "Can you tell me the time?",
+        "Could you tell me what time it is?",
+        "Do you know what time it is?",
+        "What time is it now?",
+        "What time is it right now, miss?",
+        "Have you got the time?",
+        "Do you have the time?",
+        "The time?",
+    ],
+)
+def test_time_questions_are_caught(text):
+    assert classify_clock_question(text) == "time"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "What's the date?",
+        "What is the date today?",
+        "What's today's date?",
+        "What date is it?",
+        "What day is it?",
+        "What day is it today?",
+        "What day of the week is it?",
+        "What's today?",
+        "Kestrel, what's the date?",
+        "Can you tell me the date please?",
+        "Today's date?",
+    ],
+)
+def test_date_questions_are_caught(text):
+    assert classify_clock_question(text) == "date"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Turn off the printer light.",
+        "Set a timer for ten minutes.",
+        "Turn on the lights at the time I wake up.",
+        "What time is sunset?",
+        "What time is it in Tokyo?",
+        "What time does the printer finish?",
+        "What time did the front door open?",
+        "When did the kitchen light turn on?",
+        "Is anything on?",
+        "What's on today?",
+        "What's the temperature?",
+        "What's the weather today?",
+        "Remind me what I told you about my coffee.",
+        "What's the time and date?",
+        "Time to turn off the lights.",
+        "Set the clock to seven.",
+        "What day is bin collection?",
+        "What date is my dentist appointment?",
+        "How are you?",
+        "Good night.",
+        "",
+        "   ",
+    ],
+)
+def test_other_requests_go_to_the_model(text):
+    assert classify_clock_question(text) is None
+
+
+@pytest.mark.parametrize(
+    ("hour", "minute", "expected"),
+    [
+        (0, 0, "It's midnight."),
+        (0, 55, "It's five to one."),
+        (1, 7, "It's one oh seven."),
+        (10, 47, "It's ten forty-seven."),
+        (11, 45, "It's quarter to noon."),
+        (12, 0, "It's noon."),
+        (12, 15, "It's quarter past twelve."),
+        (12, 45, "It's quarter to one."),
+        (19, 0, "It's seven o'clock."),
+        (23, 59, "It's eleven fifty-nine."),
+    ],
+)
+def test_time_answer(hour, minute, expected):
+    now = datetime(2026, 11, 27, hour, minute, 30)
+    assert clock_answer("time", now) == expected
+
+
+def test_date_answer():
+    assert (
+        clock_answer("date", datetime(2026, 11, 27, 0, 55))
+        == "It's Friday November 27th 2026."
+    )
+
+
+def test_unknown_kind_is_rejected():
+    with pytest.raises(ValueError):
+        clock_answer("weather", datetime(2026, 11, 27, 0, 55))
