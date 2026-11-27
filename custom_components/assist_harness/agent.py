@@ -105,6 +105,7 @@ from .const import (
     MIN_REASONING_COMPLETION_TOKENS,
 )
 from .conversation_history import ConversationHistory
+from .spoken_time import format_spoken_date, format_spoken_time
 from .trailing_offer import is_action_tool, strip_trailing_offer
 from .localization import get_spoken_symbols
 from .tools import memory  # [kestrel]
@@ -160,63 +161,6 @@ TURN_CONTEXT_PLACEHOLDERS = (
     ("{time}", "Time"),
     ("{date}", "Date"),
 )
-
-
-
-def format_spoken_time(hour: int, minute: int) -> str:
-    """Format a 24-hour time as spoken words, with no digits or full stops."""
-    ones = (
-        "twelve",
-        "one",
-        "two",
-        "three",
-        "four",
-        "five",
-        "six",
-        "seven",
-        "eight",
-        "nine",
-        "ten",
-        "eleven",
-    )
-    teens = (
-        "ten",
-        "eleven",
-        "twelve",
-        "thirteen",
-        "fourteen",
-        "fifteen",
-        "sixteen",
-        "seventeen",
-        "eighteen",
-        "nineteen",
-    )
-    tens = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty"}
-
-    if hour == 0 and minute == 0:
-        return "midnight"
-    if hour == 12 and minute == 0:
-        return "noon"
-
-    if hour < 12:
-        period = "in the morning"
-    elif hour < 18:
-        period = "in the afternoon"
-    else:
-        period = "in the evening"
-
-    hour_word = ones[hour % 12]
-    if minute == 0:
-        return f"{hour_word} o'clock {period}"
-    if minute < 10:
-        return f"{hour_word} oh {ones[minute]} {period}"
-    if minute < 20:
-        return f"{hour_word} {teens[minute - 10]} {period}"
-    tens_word, ones_digit = divmod(minute, 10)
-    minute_word = (
-        tens[tens_word] if ones_digit == 0 else f"{tens[tens_word]}-{ones[ones_digit]}"
-    )
-    return f"{hour_word} {minute_word} {period}"
 
 
 class HermesSessionError(Exception):
@@ -1473,15 +1417,9 @@ class MCPAssistConversationEntity(ConversationEntity):
             self.entry.data.get(CONF_TECHNICAL_PROMPT, DEFAULT_TECHNICAL_PROMPT),
         )
         now = dt_util.now()
-        day = now.day
-        if 10 <= day % 100 <= 20:
-            suffix = "th"
-        else:
-            suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-        turn_date = f"{now.strftime('%A %B')} {day}{suffix} {now.year}"
         values = {
             "{time}": lambda: format_spoken_time(now.hour, now.minute),
-            "{date}": lambda: turn_date,
+            "{date}": lambda: format_spoken_date(now),
         }
         parts = []
         for placeholder, label in TURN_CONTEXT_PLACEHOLDERS:
@@ -1590,8 +1528,9 @@ class MCPAssistConversationEntity(ConversationEntity):
             )
 
             # Format time and date variables
-            current_time = dt_util.now().strftime("%H:%M:%S")
-            current_date = dt_util.now().strftime("%Y-%m-%d")
+            now = dt_util.now()
+            current_time = format_spoken_time(now.hour, now.minute)
+            current_date = format_spoken_date(now)
 
             # Replace placeholders in technical prompt
             technical_prompt = technical_prompt.replace("{time}", current_time)
